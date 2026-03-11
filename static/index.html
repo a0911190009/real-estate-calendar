@@ -567,9 +567,104 @@ body {
 
 /* 點擊週格子新增行程的視覺提示 */
 .week-day-col:hover { cursor: pointer; }
+
+/* ── 桌機左側 Sidebar ── */
+#app-sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 200px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  padding: 16px 0;
+}
+#app-sidebar .sb-logo {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 16px 14px;
+  font-size: 0.9rem; font-weight: 700;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+#app-sidebar nav a {
+  display: block;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: 6px;
+  margin: 2px 8px;
+  transition: background .15s, color .15s;
+}
+#app-sidebar nav a:hover { background: var(--surface2); color: var(--text); }
+#app-sidebar nav a.active { background: rgba(59,130,246,.15); color: var(--primary); font-weight: 600; }
+
+/* 有 Sidebar 時，主內容向右偏移 */
+@media (min-width: 768px) {
+  body { flex-direction: row; }
+  #app-sidebar { display: flex; }
+  #main-wrap {
+    margin-left: 200px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+}
+@media (max-width: 767px) {
+  #app-sidebar { display: none; }
+  #main-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  /* 手機底部 Tab Bar 時，主內容留出空間 */
+  body { padding-bottom: 60px; }
+}
+
+/* ── 手機底部 Tab Bar ── */
+#cal-tab-bar {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 250;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@media (max-width: 767px) { #cal-tab-bar { display: flex; } }
+.cal-tb-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 2px;
+  padding: 8px 4px;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  text-decoration: none;
+  border-top: 2px solid transparent;
+  transition: color .15s;
+}
+.cal-tb-item:hover { color: var(--text); }
+.cal-tb-active { color: var(--primary) !important; border-top-color: var(--primary) !important; }
 </style>
 </head>
 <body>
+
+<!-- ── 桌機左側 Sidebar ── -->
+<aside id="app-sidebar">
+  <div class="sb-logo">
+    <span style="font-size:1.3rem;">📅</span>
+    <span>業務行事曆</span>
+  </div>
+  <nav>
+    <a href="javascript:void(0)" id="sb-portal-home" class="hidden">🏠 工具首頁</a>
+    <a href="javascript:void(0)" id="sb-ad" class="hidden">📝 廣告文案</a>
+    <a href="javascript:void(0)" id="sb-library" class="hidden">📁 物件庫</a>
+    <a href="javascript:void(0)" id="sb-buyer" class="hidden">👥 買方管理</a>
+    <a href="javascript:void(0)" id="sb-survey" class="hidden">📍 周邊調查</a>
+    <a href="#" class="active">📅 業務行事曆</a>
+  </nav>
+</aside>
+
+<!-- ── 主內容包裝（Sidebar 右側） ── -->
+<div id="main-wrap">
 
 <!-- ── 頂部工具列 ── -->
 <div id="topbar">
@@ -1660,6 +1755,70 @@ document.addEventListener('keydown', e => {
     closePanel();
   }
 });
+
+// ── 載入 config，設定 Sidebar 和 Tab Bar 連結 ──
+(function() {
+  fetch('/api/config')
+    .then(r => r.json())
+    .then(cfg => {
+      var portalUrl = (cfg.portal_url || '').replace(/\/$/, '');
+      if (!portalUrl || portalUrl === '/') return;
+      var portalBase = portalUrl;
+      // Sidebar 連結
+      var sbPortal = document.getElementById('sb-portal-home');
+      if (sbPortal) { sbPortal.href = portalUrl; sbPortal.target = 'tool-portal'; sbPortal.classList.remove('hidden'); }
+      var sbAd = document.getElementById('sb-ad');
+      if (sbAd) { sbAd.href = portalBase + '/api/enter/post'; sbAd.target = 'tool-post'; sbAd.classList.remove('hidden'); }
+      var sbLib = document.getElementById('sb-library');
+      if (sbLib) { sbLib.href = portalBase + '/api/enter/library'; sbLib.target = 'tool-library'; sbLib.classList.remove('hidden'); }
+      var sbBuyer = document.getElementById('sb-buyer');
+      if (sbBuyer) { sbBuyer.href = portalBase + '/api/enter/buyer'; sbBuyer.target = 'tool-buyer'; sbBuyer.classList.remove('hidden'); }
+      var sbSurvey = document.getElementById('sb-survey');
+      if (sbSurvey) { sbSurvey.href = portalBase + '/api/enter/survey'; sbSurvey.target = 'tool-survey'; sbSurvey.classList.remove('hidden'); }
+      // Tab Bar 連結
+      var tbHome = document.getElementById('cal-tb-home');
+      if (tbHome) { tbHome.href = portalUrl; tbHome.target = 'tool-portal'; }
+      var tbAd = document.getElementById('cal-tb-ad');
+      if (tbAd) { tbAd.href = portalBase + '/api/enter/post'; tbAd.target = 'tool-post'; }
+      var tbLib = document.getElementById('cal-tb-library');
+      if (tbLib) { tbLib.href = portalBase + '/api/enter/library'; tbLib.target = 'tool-library'; }
+      var tbBuyer = document.getElementById('cal-tb-buyer');
+      if (tbBuyer) { tbBuyer.href = portalBase + '/api/enter/buyer'; tbBuyer.target = 'tool-buyer'; }
+      var tbSurvey = document.getElementById('cal-tb-survey');
+      if (tbSurvey) { tbSurvey.href = portalBase + '/api/enter/survey'; tbSurvey.target = 'tool-survey'; }
+    })
+    .catch(() => {});
+})();
 </script>
+
+<!-- ── 手機底部 Tab Bar ── -->
+<nav id="cal-tab-bar">
+  <a href="javascript:void(0)" id="cal-tb-home" class="cal-tb-item">
+    <span style="font-size:1.25rem;">🏠</span>
+    <span>首頁</span>
+  </a>
+  <a href="javascript:void(0)" id="cal-tb-ad" class="cal-tb-item">
+    <span style="font-size:1.25rem;">📝</span>
+    <span>廣告</span>
+  </a>
+  <a href="javascript:void(0)" id="cal-tb-library" class="cal-tb-item">
+    <span style="font-size:1.25rem;">📁</span>
+    <span>物件庫</span>
+  </a>
+  <a href="javascript:void(0)" id="cal-tb-buyer" class="cal-tb-item">
+    <span style="font-size:1.25rem;">👥</span>
+    <span>買方</span>
+  </a>
+  <a href="javascript:void(0)" id="cal-tb-survey" class="cal-tb-item">
+    <span style="font-size:1.25rem;">📍</span>
+    <span>周邊</span>
+  </a>
+  <a href="#" class="cal-tb-item cal-tb-active">
+    <span style="font-size:1.25rem;">📅</span>
+    <span>行事曆</span>
+  </a>
+</nav>
+
+</div><!-- /#main-wrap -->
 </body>
 </html>

@@ -120,6 +120,15 @@ def auth_logout():
     return jsonify({"redirect": PORTAL_URL or "/"})
 
 
+@app.route("/api/config")
+def api_config():
+    """回傳前端需要的設定（portal_url），不需要登入。"""
+    return jsonify({
+        "portal_url": PORTAL_URL or "/",
+        "buyer_url":  BUYER_URL  or "",
+    })
+
+
 @app.route("/api/me")
 def api_me():
     email, err = _require_user()
