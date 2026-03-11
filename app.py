@@ -69,7 +69,7 @@ BUYER_URL       = (os.environ.get("BUYER_URL") or "").strip()
 ADMIN_EMAILS    = [e.strip() for e in (os.environ.get("ADMIN_EMAILS") or "").split(",") if e.strip()]
 SERVICE_KEY     = os.environ.get("SERVICE_KEY", "")
 TOKEN_SERIALIZER = URLSafeTimedSerializer(app.secret_key)
-TOKEN_MAX_AGE   = 60  # seconds
+TOKEN_MAX_AGE   = 300  # 5 分鐘，容忍 Cloud Run cold start
 
 # Google Calendar API 設定（服務帳號 JSON 或 OAuth credentials）
 GOOGLE_CAL_CREDENTIALS_JSON = os.environ.get("GOOGLE_CAL_CREDENTIALS_JSON", "")
