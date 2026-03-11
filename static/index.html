@@ -548,28 +548,29 @@ body {
 
 <script>
 // ══════════════════════════════════════════
-//  全域狀態
+//  全域狀態：整個頁面共用的變數
 // ══════════════════════════════════════════
-let currentYear  = new Date().getFullYear();
-let currentMonth = new Date().getMonth(); // 0-indexed
-let allEvents    = [];   // 當月行程
-let editingId    = null; // 編輯中的行程 ID
-let selectedType = '';   // commission / showing / contract
-let selectedDate = null; // 點選的日期
+let currentYear  = new Date().getFullYear();  // 目前顯示的年份
+let currentMonth = new Date().getMonth();     // 目前顯示的月份（0=1月，11=12月）
+let allEvents    = [];   // 從後端撈回的當月行程清單
+let editingId    = null; // 正在編輯的行程 ID（null = 新增模式）
+let selectedType = '';   // 目前選擇的行程類型：commission / showing / contract
+let selectedDate = null; // 使用者點選的日期字串（YYYY-MM-DD）
 
-// 自動完成快取
-const acCache = { prop: [], buyer: [], seller: [] };
+// 自動完成：快取搜尋結果 + 記住使用者點選的項目
+const acCache    = { prop: [], buyer: [], seller: [] };
 const acSelected = { prop: null, buyer: null, seller: null };
 
 // ══════════════════════════════════════════
-//  初始化
+//  初始化：頁面載入完成後執行
 // ══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadMe();
-  renderCalendar();
-  await loadEvents();
+  await loadMe();      // 取得登入者資訊顯示在右上角
+  renderCalendar();    // 先畫出空白日曆骨架
+  await loadEvents();  // 再去後端拉行程資料填入格子
 });
 
+// 取得目前登入者姓名，顯示在頂部工具列
 async function loadMe() {
   try {
     const r = await fetch('/api/me');
@@ -581,7 +582,7 @@ async function loadMe() {
 }
 
 // ══════════════════════════════════════════
-//  日曆渲染
+//  日曆渲染：把當月格子畫到 #cal-grid 裡
 // ══════════════════════════════════════════
 function renderCalendar() {
   const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
@@ -672,6 +673,7 @@ function renderCalendar() {
   }
 }
 
+// 切換月份：delta = -1 上個月、+1 下個月；跨年時自動調整
 function changeMonth(delta) {
   currentMonth += delta;
   if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
@@ -680,6 +682,7 @@ function changeMonth(delta) {
   loadEvents();
 }
 
+// 跳回今天所在的月份
 function goToday() {
   const now = new Date();
   currentYear  = now.getFullYear();
@@ -688,18 +691,20 @@ function goToday() {
   loadEvents();
 }
 
+// 把 Date 物件轉成 YYYY-MM-DD 字串，方便比對
 function toDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 // ══════════════════════════════════════════
-//  載入行程
+//  載入行程：從後端 API 拉當月資料
 // ══════════════════════════════════════════
 async function loadEvents() {
+  // 起始日 = 當月第一天
   const start = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-01`;
-  // 下個月1日
+  // 結束日 = 下個月第一天（API 用 < 判斷，所以不含當天）
   let ey = currentYear, em = currentMonth + 1;
-  if (em > 11) { em = 0; ey++; }
+  if (em > 11) { em = 0; ey++; }   // 12月→跨年到1月
   const end = `${ey}-${String(em+1).padStart(2,'0')}-01`;
 
   try {
@@ -716,10 +721,11 @@ async function loadEvents() {
 }
 
 // ══════════════════════════════════════════
-//  側欄
+//  側欄：點日期後從右邊滑入，列出當天行程
 // ══════════════════════════════════════════
+// highlightId：從行程 chip 點進來時，高亮指定那筆
 function openSidePanel(dateStr, highlightId) {
-  selectedDate = dateStr;
+  selectedDate = dateStr;  // 記住目前選的日期，新增行程時預填
   const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const [y, m, d] = dateStr.split('-');
   document.getElementById('side-title').textContent = `${y} 年 ${months[parseInt(m)-1]} ${parseInt(d)} 日`;
@@ -782,21 +788,25 @@ function closePanel() {
 }
 
 // ══════════════════════════════════════════
-//  Modal 開啟/關閉
+//  Modal：新增 / 編輯行程的彈窗
 // ══════════════════════════════════════════
+
+// 開啟 Modal（新增模式）
+// dateStr：從日曆格子點進來時帶入的日期，預填開始時間
 function openModal(dateStr) {
-  editingId = null;
+  editingId = null;  // 清空 → 進入新增模式
   document.getElementById('modal-title').textContent = '新增行程';
   clearForm();
 
-  // 預設日期
+  // 預設開始時間 = 點選日期的當下整點
   const ds = dateStr || (selectedDate || toDateStr(new Date()));
   const now = new Date();
   const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   document.getElementById('f-start').value = `${ds}T${timeStr}`;
+  // 預設結束時間 = 開始時間 +1 小時
   document.getElementById('f-end').value   = `${ds}T${String(now.getHours()+1).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-  // 預設類型
+  // 預設行程類型：簽委託約
   setType('commission');
   document.getElementById('modal-overlay').classList.add('open');
 }
@@ -806,67 +816,76 @@ function closeModal() {
   editingId = null;
 }
 
-// 點 overlay 背景關閉
+// 點彈窗背景（overlay）也能關閉
 document.getElementById('modal-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
 
+// 清空表單所有欄位和自動完成的選取狀態
 function clearForm() {
   ['f-start','f-end','f-title','f-prop','f-seller','f-buyer','f-price','f-note'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.getElementById('f-prop-id').value   = '';
-  document.getElementById('f-buyer-id').value  = '';
-  Object.keys(acSelected).forEach(k => acSelected[k] = null);
+  document.getElementById('f-prop-id').value   = '';   // 物件 ID（隱藏欄）
+  document.getElementById('f-buyer-id').value  = '';   // 買方 ID（隱藏欄）
+  Object.keys(acSelected).forEach(k => acSelected[k] = null);  // 清除自動完成記錄
 }
 
 // ══════════════════════════════════════════
-//  情境類型切換
+//  情境類型切換：依選擇的行程類型顯示對應欄位
 // ══════════════════════════════════════════
+// 三種類型的欄位對應：
+//   commission（簽委託）：物件 + 賣方
+//   showing（帶看）     ：物件 + 買方
+//   contract（簽買賣）  ：物件 + 賣方 + 買方 + 成交價
 function setType(type) {
   selectedType = type;
 
-  // 更新按鈕樣式
+  // 更新三個類型按鈕的 CSS 樣式（只有選中的那個加上顏色邊框）
   ['commission','showing','contract'].forEach(t => {
     const btn = document.getElementById('type-' + t);
     btn.className = 'type-btn' + (t === type ? ` active-${t}` : '');
   });
 
-  // 控制欄位顯示
-  // 物件：全部都要
+  // 物件欄位：三種情境都需要
   document.getElementById('field-prop').classList.add('visible');
 
-  // 賣方：commission / contract
+  // 賣方欄位：簽委託 / 簽買賣 才顯示
   const showSeller = type === 'commission' || type === 'contract';
   document.getElementById('field-seller').classList.toggle('visible', showSeller);
 
-  // 買方：showing / contract
+  // 買方欄位：帶看 / 簽買賣 才顯示
   const showBuyer = type === 'showing' || type === 'contract';
   document.getElementById('field-buyer').classList.toggle('visible', showBuyer);
 
-  // 成交價：contract
+  // 成交價欄位：只有簽買賣才顯示
   document.getElementById('field-price').classList.toggle('visible', type === 'contract');
 }
 
 // ══════════════════════════════════════════
-//  自動完成
+//  自動完成：輸入關鍵字 → 延遲搜尋 → 顯示候選清單
+//  支援三個欄位：prop（物件）/ buyer（買方）/ seller（賣方）
 // ══════════════════════════════════════════
-let acTimers = {};
+let acTimers = {};  // 每個欄位各自的防抖計時器
 
+// 使用者在輸入框打字時觸發，防抖 300ms 後才真正送出請求
 function acSearch(field, q) {
-  // 清除選中
+  // 使用者改了文字 → 清除之前選中的候選項和隱藏 ID
   acSelected[field] = null;
   if (field === 'prop')  document.getElementById('f-prop-id').value = '';
   if (field === 'buyer') document.getElementById('f-buyer-id').value = '';
 
+  // 取消上一次還沒執行的搜尋，重新計時（避免每打一個字就送一次請求）
   clearTimeout(acTimers[field]);
   acTimers[field] = setTimeout(() => _doAcSearch(field, q), 300);
 }
 
+// 實際向後端 API 搜尋候選清單
 async function _doAcSearch(field, q) {
-  if (!q || q.length < 1) { acClose(field); return; }
+  if (!q || q.length < 1) { acClose(field); return; }  // 空字串就關掉下拉
 
+  // 對應後端路徑：/api/suggest/properties、/api/suggest/buyers、/api/suggest/sellers
   const endpointMap = { prop: 'properties', buyer: 'buyers', seller: 'sellers' };
   const ep = endpointMap[field];
 
@@ -874,18 +893,19 @@ async function _doAcSearch(field, q) {
     const r = await fetch(`/api/suggest/${ep}?q=${encodeURIComponent(q)}`);
     const data = await r.json();
     const items = data.items || [];
-    acCache[field] = items;
+    acCache[field] = items;       // 存快取（目前版本未二次使用，保留供未來擴充）
     renderAcList(field, items, q);
   } catch {
-    acClose(field);
+    acClose(field);  // 搜尋出錯就靜默關掉，不影響使用者操作
   }
 }
 
+// 把候選清單渲染到下拉 div，找不到資料時顯示提示訊息
 function renderAcList(field, items, q) {
   const list = document.getElementById('ac-' + field);
 
   if (items.length === 0) {
-    // 沒有資料 → 提示新增
+    // 沒有符合的資料 → 提示使用者去對應工具補建資料
     const hintMap = {
       prop:   { label: '找不到相符物件', link: '物件庫', action: 'openLibrary' },
       buyer:  { label: '找不到相符買方', link: '買方管理', action: 'openBuyer' },
@@ -933,22 +953,24 @@ function renderAcList(field, items, q) {
   list.classList.add('open');
 }
 
+// 關閉指定欄位的下拉清單
 function acClose(field) {
   const list = document.getElementById('ac-' + field);
   if (list) list.classList.remove('open');
 }
 
+// 輸入框失去焦點時：延遲 200ms 才關閉，讓 onclick 有機會先觸發
 function acBlur(field) {
-  // 延遲關閉，讓 onclick 有機會觸發
   setTimeout(() => acClose(field), 200);
 }
 
+// 輸入框重新取得焦點時：若已有輸入內容就重新觸發搜尋（避免候選消失）
 function acFocus(field) {
   const val = document.getElementById('f-' + field)?.value;
   if (val && val.length >= 1) acSearch(field, val);
 }
 
-// 外部跳轉
+// 提示使用者到其他工具補建資料，並關閉 Modal
 function openLibrary() {
   showToast('請到「物件庫」新增物件後再回來');
   closeModal();
@@ -959,23 +981,24 @@ function openBuyer() {
 }
 
 // ══════════════════════════════════════════
-//  儲存行程
+//  儲存行程：新增或更新（依 editingId 判斷）
 // ══════════════════════════════════════════
 async function saveEvent() {
   if (!selectedType) { showToast('請選擇行程類型', true); return; }
 
-  const start = document.getElementById('f-start').value;
-  const end   = document.getElementById('f-end').value;
-  const prop  = document.getElementById('f-prop').value.trim();
-  const propId = document.getElementById('f-prop-id').value.trim();
-  const seller = document.getElementById('f-seller').value.trim();
-  const buyer  = document.getElementById('f-buyer').value.trim();
-  const buyerId = document.getElementById('f-buyer-id').value.trim();
-  const price  = document.getElementById('f-price').value;
-  const title  = document.getElementById('f-title').value.trim();
-  const note   = document.getElementById('f-note').value.trim();
+  // 從表單收集所有欄位的值
+  const start   = document.getElementById('f-start').value;
+  const end     = document.getElementById('f-end').value;
+  const prop    = document.getElementById('f-prop').value.trim();
+  const propId  = document.getElementById('f-prop-id').value.trim();   // 從自動完成選中後填入
+  const seller  = document.getElementById('f-seller').value.trim();
+  const buyer   = document.getElementById('f-buyer').value.trim();
+  const buyerId = document.getElementById('f-buyer-id').value.trim();  // 從自動完成選中後填入
+  const price   = document.getElementById('f-price').value;
+  const title   = document.getElementById('f-title').value.trim();
+  const note    = document.getElementById('f-note').value.trim();
 
-  // 前端驗證
+  // 前端驗證：必填欄位檢查（後端也會再驗一次，這裡是讓使用者即時看到錯誤）
   if (!start) { showToast('請填寫開始時間', true); return; }
   if (!prop)  { showToast('請填寫物件名稱', true); return; }
   if ((selectedType === 'commission' || selectedType === 'contract') && !seller) {
@@ -985,6 +1008,7 @@ async function saveEvent() {
     showToast('請填寫買方姓名', true); return;
   }
 
+  // 組裝送出後端的 JSON body
   const body = {
     type: selectedType,
     start_dt: start.includes('T') ? start + ':00+08:00' : start,
@@ -999,6 +1023,7 @@ async function saveEvent() {
     note,
   };
 
+  // 送出期間禁用按鈕，避免重複點擊
   const btn = document.getElementById('btn-save');
   btn.disabled = true;
   btn.textContent = '儲存中…';
@@ -1006,12 +1031,14 @@ async function saveEvent() {
   try {
     let r;
     if (editingId) {
+      // editingId 有值 → 更新既有行程（PUT）
       r = await fetch(`/api/events/${editingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
     } else {
+      // editingId 為 null → 新增行程（POST）
       r = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1025,10 +1052,11 @@ async function saveEvent() {
     }
 
     const ev = await r.json();
+    // gcal_event_id 有值代表後端成功推送到 Google 日曆
     showToast(editingId ? '行程已更新 ✓' : `行程已新增${ev.gcal_event_id ? '，已同步 Google 日曆 ✓' : ''}`);
     closeModal();
-    await loadEvents();
-    // 重新打開側欄
+    await loadEvents();  // 重新拉取行程資料並重繪日曆
+    // 儲存完成後自動打開該日的側欄，方便使用者確認
     if (selectedDate || ev.start_dt) {
       openSidePanel((ev.start_dt || '').slice(0, 10) || selectedDate, ev.id);
     }
@@ -1041,7 +1069,7 @@ async function saveEvent() {
 }
 
 // ══════════════════════════════════════════
-//  編輯行程
+//  編輯行程：從後端撈出資料填入表單，進入編輯模式
 // ══════════════════════════════════════════
 async function editEvent(id) {
   try {
@@ -1049,22 +1077,22 @@ async function editEvent(id) {
     if (!r.ok) throw new Error('取得行程失敗');
     const ev = await r.json();
 
-    editingId = id;
+    editingId = id;  // 設定為編輯模式，saveEvent() 會用 PUT 送出
     document.getElementById('modal-title').textContent = '編輯行程';
     clearForm();
-    setType(ev.type || 'commission');
+    setType(ev.type || 'commission');  // 先切換類型，才能正確顯示對應欄位
 
-    // 填入值
-    document.getElementById('f-start').value  = (ev.start_dt || '').slice(0, 16);
-    document.getElementById('f-end').value    = (ev.end_dt || '').slice(0, 16);
-    document.getElementById('f-prop').value   = ev.prop_name || '';
-    document.getElementById('f-prop-id').value = ev.prop_id || '';
-    document.getElementById('f-seller').value = ev.seller_name || '';
-    document.getElementById('f-buyer').value  = ev.buyer_name || '';
-    document.getElementById('f-buyer-id').value = ev.buyer_id || '';
-    document.getElementById('f-price').value  = ev.deal_price != null ? ev.deal_price : '';
-    document.getElementById('f-title').value  = ev.title || '';
-    document.getElementById('f-note').value   = ev.note || '';
+    // 把舊資料填回表單
+    document.getElementById('f-start').value    = (ev.start_dt || '').slice(0, 16);  // 去掉秒和時區
+    document.getElementById('f-end').value      = (ev.end_dt   || '').slice(0, 16);
+    document.getElementById('f-prop').value     = ev.prop_name  || '';
+    document.getElementById('f-prop-id').value  = ev.prop_id    || '';  // 隱藏欄：物件 ID
+    document.getElementById('f-seller').value   = ev.seller_name || '';
+    document.getElementById('f-buyer').value    = ev.buyer_name  || '';
+    document.getElementById('f-buyer-id').value = ev.buyer_id    || '';  // 隱藏欄：買方 ID
+    document.getElementById('f-price').value    = ev.deal_price != null ? ev.deal_price : '';
+    document.getElementById('f-title').value    = ev.title || '';
+    document.getElementById('f-note').value     = ev.note  || '';
 
     document.getElementById('modal-overlay').classList.add('open');
   } catch (e) {
@@ -1073,16 +1101,16 @@ async function editEvent(id) {
 }
 
 // ══════════════════════════════════════════
-//  刪除行程
+//  刪除行程：確認後送出 DELETE，並更新畫面
 // ══════════════════════════════════════════
 async function deleteEvent(id) {
-  if (!confirm('確定要刪除這個行程嗎？')) return;
+  if (!confirm('確定要刪除這個行程嗎？')) return;  // 二次確認，防止誤觸
   try {
     const r = await fetch(`/api/events/${id}`, { method: 'DELETE' });
     if (!r.ok) throw new Error('刪除失敗');
     showToast('行程已刪除');
-    await loadEvents();
-    // 重新整理側欄
+    await loadEvents();  // 重新拉取並重繪日曆
+    // 刪除後重新整理側欄（同一天可能還有其他行程）
     if (selectedDate) openSidePanel(selectedDate);
   } catch (e) {
     showToast('刪除失敗：' + e.message, true);
@@ -1092,14 +1120,18 @@ async function deleteEvent(id) {
 // ══════════════════════════════════════════
 //  工具函式
 // ══════════════════════════════════════════
+
+// 登出並跳回 Portal 入口
+// 呼叫後端 /auth/logout 取得 Portal URL，再跳轉過去
 function goPortal() {
-  // 找出 portal URL（從 session 或直接跳 /auth/logout 取 redirect）
   fetch('/auth/logout', { method: 'POST' })
     .then(r => r.json())
     .then(d => { if (d.redirect) location.href = d.redirect; })
     .catch(() => { location.href = '/'; });
 }
 
+// 顯示底部提示訊息（Toast），3.5 秒後自動消失
+// isError = true 時顯示紅色錯誤樣式
 let _toastTimer;
 function showToast(msg, isError = false) {
   const el = document.getElementById('toast');
@@ -1109,7 +1141,7 @@ function showToast(msg, isError = false) {
   _toastTimer = setTimeout(() => { el.className = ''; }, 3500);
 }
 
-// ESC 關閉
+// 按 ESC 鍵快速關閉 Modal 和側欄
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeModal();

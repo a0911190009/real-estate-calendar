@@ -14,7 +14,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 import requests as http_requests
-from flask import Flask, request, session, redirect, jsonify, render_template_string, send_from_directory
+from flask import Flask, request, session, redirect, jsonify, send_from_directory
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 # ── 讀取 .env ──
