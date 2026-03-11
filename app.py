@@ -300,6 +300,9 @@ def api_events_create():
         col.document(event_id).update({"gcal_event_id": gcal_id})
         doc["gcal_event_id"] = gcal_id
 
+    # 帶看行程 → 自動同步到買方管理的帶看紀錄
+    _push_showing_to_buyer(doc)
+
     return jsonify(doc), 201
 
 
@@ -552,6 +555,53 @@ def _build_gcal_body(event: dict) -> dict:
         "end": to_gcal_time(end),
         "colorId": {"commission": "5", "showing": "2", "contract": "11"}.get(event.get("type", ""), "1"),
     }
+
+
+def _push_showing_to_buyer(event: dict):
+    """
+    帶看行程儲存後，自動在買方管理新增帶看紀錄。
+    只有 type=showing 且有 buyer_id 時才推送。
+    失敗僅記錄 warning，不影響行事曆本身的回應。
+    """
+    if event.get("type") != "showing":
+        return
+    buyer_id = (event.get("buyer_id") or "").strip()
+    if not buyer_id:
+        return   # 沒有選擇買方 ID，無法建立紀錄
+
+    buyer_url = BUYER_URL.rstrip("/")
+    if not buyer_url:
+        logging.warning("BUYER_URL 未設定，無法推送帶看紀錄")
+        return
+
+    secret_key = app.secret_key  # 與 Buyer 共享同一把 FLASK_SECRET_KEY
+
+    # 從 start_dt 取日期部分（YYYY-MM-DD）
+    date_str = (event.get("start_dt") or "")[:10]
+
+    payload = {
+        "secret":            secret_key,
+        "buyer_id":          buyer_id,
+        "buyer_name":        event.get("buyer_name", ""),
+        "prop_id":           event.get("prop_id", ""),
+        "prop_name":         event.get("prop_name", ""),
+        "prop_address":      "",    # 行事曆目前未儲存地址，留空
+        "date":              date_str,
+        "calendar_event_id": event.get("id", ""),
+        "note":              event.get("note", ""),
+    }
+    try:
+        r = http_requests.post(
+            f"{buyer_url}/api/showings/from-calendar",
+            json=payload,
+            timeout=8,
+        )
+        if r.ok:
+            logging.info("帶看紀錄已推送到 Buyer，showing_id=%s", r.json().get("id"))
+        else:
+            logging.warning("推送帶看紀錄失敗：%s %s", r.status_code, r.text[:200])
+    except Exception as e:
+        logging.warning("推送帶看紀錄例外：%s", e)
 
 
 def _push_to_google_calendar(event: dict) -> str:
