@@ -111,7 +111,11 @@ def auth_portal_login():
     session["user_email"] = email
     session["user_name"]  = payload.get("name", "")
     session["user_picture"] = payload.get("picture", "")
-    return redirect("/")
+    session.modified = True
+    return """<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta http-equiv="refresh" content="0;url=/">
+<script>window.location.replace("/");</script>
+</head><body></body></html>"""
 
 
 @app.route("/auth/logout", methods=["POST"])
