@@ -561,6 +561,10 @@ let selectedDate = null; // 使用者點選的日期字串（YYYY-MM-DD）
 const acCache    = { prop: [], buyer: [], seller: [] };
 const acSelected = { prop: null, buyer: null, seller: null };
 
+// 記錄使用者是否手動改過結束時間
+// true = 手動改過，開始時間變動時不再自動跟隨；false = 尚未手動改，跟著走
+let endTimeManuallySet = false;
+
 // ══════════════════════════════════════════
 //  初始化：頁面載入完成後執行
 // ══════════════════════════════════════════
@@ -568,6 +572,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadMe();      // 取得登入者資訊顯示在右上角
   renderCalendar();    // 先畫出空白日曆骨架
   await loadEvents();  // 再去後端拉行程資料填入格子
+
+  // ── 開始時間變動 → 自動更新結束時間（智慧跟隨）──
+  document.getElementById('f-start').addEventListener('change', function () {
+    // 如果使用者已經手動設過結束時間，就不自動更動（尊重使用者意圖）
+    if (endTimeManuallySet) return;
+
+    const startVal = this.value;
+    if (!startVal) return;
+
+    // 把開始時間加 1 小時，填入結束時間
+    const startMs = new Date(startVal).getTime();
+    const endDate = new Date(startMs + 60 * 60 * 1000);  // +1 小時（毫秒）
+
+    // 轉成 datetime-local 需要的格式 YYYY-MM-DDTHH:MM
+    const pad = n => String(n).padStart(2, '0');
+    const endStr = `${endDate.getFullYear()}-${pad(endDate.getMonth()+1)}-${pad(endDate.getDate())}T${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+    document.getElementById('f-end').value = endStr;
+  });
+
+  // ── 結束時間被手動修改 → 記錄下來，之後不再自動跟隨 ──
+  document.getElementById('f-end').addEventListener('change', function () {
+    endTimeManuallySet = true;
+  });
 });
 
 // 取得目前登入者姓名，顯示在頂部工具列
@@ -830,6 +857,7 @@ function clearForm() {
   document.getElementById('f-prop-id').value   = '';   // 物件 ID（隱藏欄）
   document.getElementById('f-buyer-id').value  = '';   // 買方 ID（隱藏欄）
   Object.keys(acSelected).forEach(k => acSelected[k] = null);  // 清除自動完成記錄
+  endTimeManuallySet = false;  // 重置「手動改過結束時間」的記錄，讓自動跟隨恢復作用
 }
 
 // ══════════════════════════════════════════
@@ -1085,6 +1113,8 @@ async function editEvent(id) {
     // 把舊資料填回表單
     document.getElementById('f-start').value    = (ev.start_dt || '').slice(0, 16);  // 去掉秒和時區
     document.getElementById('f-end').value      = (ev.end_dt   || '').slice(0, 16);
+    // 編輯模式的結束時間是使用者當初設好的，標記為「已手動設定」，不讓開始時間變動時自動覆蓋
+    if (ev.end_dt) endTimeManuallySet = true;
     document.getElementById('f-prop').value     = ev.prop_name  || '';
     document.getElementById('f-prop-id').value  = ev.prop_id    || '';  // 隱藏欄：物件 ID
     document.getElementById('f-seller').value   = ev.seller_name || '';
