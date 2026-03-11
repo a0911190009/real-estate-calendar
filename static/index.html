@@ -267,7 +267,7 @@ body {
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 20px 60px rgba(0,0,0,.6);
 }
 #modal-header {
@@ -333,14 +333,16 @@ body {
 /* 自動完成下拉 */
 .autocomplete-wrap { position: relative; }
 .autocomplete-list {
-  position: absolute; top: 100%; left: 0; right: 0;
+  /* position:fixed 讓下拉清單不受父層 overflow:hidden/auto 裁切 */
+  position: fixed;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 8px;
-  z-index: 50;
+  z-index: 9999;
   max-height: 200px;
   overflow-y: auto;
   display: none;
+  min-width: 200px;
 }
 .autocomplete-list.open { display: block; }
 .ac-item {
@@ -918,18 +920,28 @@ async function _doAcSearch(field, q) {
 
   try {
     const r = await fetch(`/api/suggest/${ep}?q=${encodeURIComponent(q)}`);
+    // 未登入時後端回 401
+    if (r.status === 401) {
+      showToast('登入已過期，請重新從入口進入', true);
+      acClose(field);
+      return;
+    }
     const data = await r.json();
     const items = data.items || [];
-    acCache[field] = items;       // 存快取（目前版本未二次使用，保留供未來擴充）
+    acCache[field] = items;
     renderAcList(field, items, q);
-  } catch {
-    acClose(field);  // 搜尋出錯就靜默關掉，不影響使用者操作
+  } catch (err) {
+    // 原本靜默關掉，現在顯示錯誤方便除錯
+    console.error('acSearch error:', field, err);
+    acClose(field);
   }
 }
 
 // 把候選清單渲染到下拉 div，找不到資料時顯示提示訊息
 function renderAcList(field, items, q) {
   const list = document.getElementById('ac-' + field);
+  // 先定位（position:fixed 需要計算座標）
+  acPosition(field);
 
   if (items.length === 0) {
     // 沒有符合的資料 → 提示使用者去對應工具補建資料
@@ -981,6 +993,17 @@ function renderAcList(field, items, q) {
     list.appendChild(el);
   });
   list.classList.add('open');
+}
+
+// 將下拉清單定位到輸入框正下方（因為用 position:fixed，需要 JS 計算座標）
+function acPosition(field) {
+  const input = document.getElementById('f-' + field);
+  const list  = document.getElementById('ac-' + field);
+  if (!input || !list) return;
+  const rect = input.getBoundingClientRect();
+  list.style.top   = (rect.bottom + 2) + 'px';
+  list.style.left  = rect.left + 'px';
+  list.style.width = rect.width + 'px';
 }
 
 // 關閉指定欄位的下拉清單
