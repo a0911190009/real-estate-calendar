@@ -70,21 +70,23 @@ body {
 #btn-add-event:hover { background: var(--primary-h); }
 #user-info { font-size: 0.82rem; color: var(--text-muted); }
 
-/* ── 日曆主體 ── */
-#cal-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* 月份導航 */
+/* ── 導航列（月/週共用） ── */
 #cal-nav {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px 20px 10px;
   flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── 月檢視主體 ── */
+#cal-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 #cal-title { font-size: 1.2rem; font-weight: 700; min-width: 140px; }
 .btn-nav {
@@ -400,6 +402,171 @@ body {
 .legend-dot {
   width: 10px; height: 10px; border-radius: 3px; display: inline-block;
 }
+
+/* ── 月/週切換按鈕 ── */
+#view-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.view-btn {
+  padding: 4px 14px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all .15s;
+}
+.view-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+.view-btn:not(.active):hover { background: var(--surface2); color: var(--text); }
+
+/* ── 週檢視容器 ── */
+#week-container {
+  flex: 1;
+  min-height: 0;
+  display: none;         /* 預設隱藏，切換到週才顯示 */
+  flex-direction: column;
+  overflow: hidden;
+}
+#week-container.visible { display: flex; }
+
+/* 週頂部：日期欄標題 */
+#week-header {
+  display: grid;
+  /* 第一欄是時間軸寬度，後面 7 欄是每天 */
+  grid-template-columns: 52px repeat(7, 1fr);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  padding: 0 8px 0 0;
+}
+.week-header-time { /* 左上角空白佔位 */ }
+.week-header-day {
+  text-align: center;
+  padding: 8px 4px 6px;
+  border-left: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.week-header-day .wh-weekday {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: .04em;
+  margin-bottom: 2px;
+}
+.week-header-day .wh-date {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  display: block;
+  line-height: 1.2;
+}
+.week-header-day.today-col .wh-date {
+  color: var(--primary);
+}
+.week-header-day.today-col {
+  background: rgba(59,130,246,.06);
+}
+
+/* 週主體：時間軸 + 格線 */
+#week-body {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+#week-grid {
+  display: grid;
+  grid-template-columns: 52px repeat(7, 1fr);
+  min-height: 100%;
+  padding: 0 8px 0 0;
+}
+
+/* 時間軸（左邊的小時標籤） */
+.week-time-col {
+  display: flex;
+  flex-direction: column;
+}
+.week-time-slot {
+  height: 60px;         /* 每小時 60px */
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 2px;
+  padding-right: 6px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  justify-content: flex-end;
+  border-top: 1px solid transparent;  /* 佔位，不畫線 */
+}
+
+/* 每天的格子欄 */
+.week-day-col {
+  border-left: 1px solid var(--border);
+  position: relative;
+  min-height: 1440px;   /* 24 小時 × 60px */
+}
+.week-day-col.today-col { background: rgba(59,130,246,.04); }
+
+/* 橫向時間格線（每小時一條） */
+.week-hour-line {
+  position: absolute;
+  left: 0; right: 0;
+  border-top: 1px solid var(--border);
+  opacity: .5;
+}
+.week-hour-line.half {
+  border-top-style: dashed;
+  opacity: .25;
+}
+
+/* 週檢視行程區塊 */
+.week-event {
+  position: absolute;
+  left: 3px; right: 3px;
+  border-radius: 5px;
+  padding: 3px 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+  line-height: 1.3;
+  transition: opacity .15s, filter .15s;
+  z-index: 1;
+}
+.week-event:hover { opacity: .85; filter: brightness(1.1); }
+.week-event.commission { background: rgba(245,158,11,.3); color: #fbbf24; border-left: 3px solid var(--commission); }
+.week-event.showing    { background: rgba(16,185,129,.25); color: #34d399; border-left: 3px solid var(--showing); }
+.week-event.contract   { background: rgba(139,92,246,.3); color: #a78bfa; border-left: 3px solid var(--contract); }
+
+/* 週檢視的「今天現在時間」紅線 */
+#week-now-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: #ef4444;
+  z-index: 10;
+  pointer-events: none;
+}
+#week-now-line::before {
+  content: '';
+  position: absolute;
+  left: -4px; top: -4px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+/* 點擊週格子新增行程的視覺提示 */
+.week-day-col:hover { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -420,29 +587,51 @@ body {
   <span><span class="legend-dot" style="background:var(--contract)"></span> 簽買賣契約</span>
 </div>
 
-<!-- ── 日曆主體 ── -->
-<div id="cal-container">
-  <!-- 月份導航 -->
-  <div id="cal-nav">
-    <button class="btn-nav" onclick="changeMonth(-1)">‹</button>
-    <button class="btn-nav" onclick="changeMonth(1)">›</button>
-    <span id="cal-title"></span>
-    <button id="btn-today" onclick="goToday()">今天</button>
+<!-- ── 月/週 共用導航列 ── -->
+<div id="cal-nav">
+  <button class="btn-nav" id="btn-prev" onclick="navPrev()">‹</button>
+  <button class="btn-nav" id="btn-next" onclick="navNext()">›</button>
+  <span id="cal-title"></span>
+  <button id="btn-today" onclick="goToday()">今天</button>
+  <!-- 月/週切換 -->
+  <div id="view-toggle" style="margin-left:auto;">
+    <button class="view-btn active" id="view-month" onclick="switchView('month')">月</button>
+    <button class="view-btn" id="view-week" onclick="switchView('week')">週</button>
   </div>
+</div>
 
+<!-- ── 月檢視 ── -->
+<div id="cal-container">
   <!-- 星期標題 -->
   <div id="cal-weekdays">
-    <div class="weekday-label" style="color:#ef4444">日</div>
     <div class="weekday-label">一</div>
     <div class="weekday-label">二</div>
     <div class="weekday-label">三</div>
     <div class="weekday-label">四</div>
     <div class="weekday-label">五</div>
     <div class="weekday-label" style="color:#60a5fa">六</div>
+    <div class="weekday-label" style="color:#ef4444">日</div>
   </div>
 
   <!-- 格子 -->
   <div id="cal-grid"></div>
+</div>
+
+<!-- ── 週檢視 ── -->
+<div id="week-container">
+  <!-- 週標題（7 天日期欄） -->
+  <div id="week-header">
+    <div class="week-header-time"></div>
+    <!-- JS 動態填入 7 個 .week-header-day -->
+  </div>
+  <!-- 週主體（時間軸 + 行程） -->
+  <div id="week-body">
+    <div id="week-grid">
+      <!-- JS 動態填入 -->
+    </div>
+    <!-- 現在時間紅線，JS 動態定位 -->
+    <div id="week-now-line" style="display:none;"></div>
+  </div>
 </div>
 
 <!-- ── 右側欄（點日期後的行程清單） ── -->
@@ -611,7 +800,73 @@ async function loadMe() {
 }
 
 // ══════════════════════════════════════════
-//  日曆渲染：把當月格子畫到 #cal-grid 裡
+//  檢視切換：月 / 週
+// ══════════════════════════════════════════
+let currentView = 'month';   // 'month' 或 'week'
+// 週檢視用：目前週的週一日期（Date 物件）
+let currentWeekMonday = getMonday(new Date());
+
+/** 傳入任意 Date，回傳該週的週一 Date */
+function getMonday(d) {
+  const day = d.getDay();              // 0=日, 1=一 … 6=六
+  const diff = (day === 0) ? -6 : 1 - day;  // 週一算起：日要往前6天
+  const mon = new Date(d);
+  mon.setDate(d.getDate() + diff);
+  mon.setHours(0, 0, 0, 0);
+  return mon;
+}
+
+/** 切換月/週檢視 */
+function switchView(view) {
+  currentView = view;
+  document.getElementById('view-month').classList.toggle('active', view === 'month');
+  document.getElementById('view-week').classList.toggle('active', view === 'week');
+  document.getElementById('cal-container').style.display   = view === 'month' ? '' : 'none';
+  document.getElementById('week-container').classList.toggle('visible', view === 'week');
+  if (view === 'week') {
+    // 切換到週時，確保週一是目前月份
+    currentWeekMonday = getMonday(new Date(currentYear, currentMonth, 1));
+    renderWeek();
+    loadWeekEvents();
+  } else {
+    renderCalendar();
+    loadEvents();
+  }
+}
+
+/** 統一的「上一個」按鈕 */
+function navPrev() {
+  if (currentView === 'month') {
+    currentMonth--;
+    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    renderCalendar();
+    loadEvents();
+  } else {
+    currentWeekMonday = new Date(currentWeekMonday);
+    currentWeekMonday.setDate(currentWeekMonday.getDate() - 7);
+    renderWeek();
+    loadWeekEvents();
+  }
+}
+
+/** 統一的「下一個」按鈕 */
+function navNext() {
+  if (currentView === 'month') {
+    currentMonth++;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    renderCalendar();
+    loadEvents();
+  } else {
+    currentWeekMonday = new Date(currentWeekMonday);
+    currentWeekMonday.setDate(currentWeekMonday.getDate() + 7);
+    renderWeek();
+    loadWeekEvents();
+  }
+}
+
+// ══════════════════════════════════════════
+//  月檢視渲染：把當月格子畫到 #cal-grid 裡
+//  月曆從「週一」開始（0=Mon … 6=Sun）
 // ══════════════════════════════════════════
 function renderCalendar() {
   const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
@@ -620,8 +875,9 @@ function renderCalendar() {
   const grid = document.getElementById('cal-grid');
   grid.innerHTML = '';
 
-  // 當月第一天是星期幾（0=日）
-  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  // 當月第一天是星期幾（原始 0=日，改成 0=週一 的編號）
+  const rawDay = new Date(currentYear, currentMonth, 1).getDay();  // 0=日
+  const firstDay = (rawDay === 0) ? 6 : rawDay - 1;  // 0=週一 … 6=週日
   // 當月天數
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   // 上個月天數
@@ -638,7 +894,7 @@ function renderCalendar() {
     eventMap[d].push(ev);
   });
 
-  // 填格子（共 6 列 × 7 = 42 格）
+  // 填格子（共 6 列 × 7 = 42 格），從週一開始排
   for (let i = 0; i < 42; i++) {
     const cell = document.createElement('div');
     cell.className = 'cal-day';
@@ -709,22 +965,208 @@ function renderCalendar() {
   }
 }
 
-// 切換月份：delta = -1 上個月、+1 下個月；跨年時自動調整
-function changeMonth(delta) {
-  currentMonth += delta;
-  if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
-  if (currentMonth > 11) { currentMonth = 0;  currentYear++; }
-  renderCalendar();
-  loadEvents();
+// ══════════════════════════════════════════
+//  週檢視渲染
+// ══════════════════════════════════════════
+let weekEvents = [];   // 週檢視用的行程快取
+let nowLineTimer = null;
+
+function renderWeek() {
+  const mon = currentWeekMonday;
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);  // 週日
+
+  // 更新標題
+  const fmt = (d) => `${d.getMonth()+1}/${d.getDate()}`;
+  document.getElementById('cal-title').textContent =
+    `${mon.getFullYear()} 年  ${fmt(mon)} – ${fmt(sun)}`;
+
+  const today = new Date();
+  const todayStr = toDateStr(today);
+
+  // ── 週標題（日期欄） ──
+  const weekDayNames = ['週一','週二','週三','週四','週五','週六','週日'];
+  const header = document.getElementById('week-header');
+  header.innerHTML = '<div class="week-header-time"></div>';
+  for (let d = 0; d < 7; d++) {
+    const date = new Date(mon); date.setDate(mon.getDate() + d);
+    const ds = toDateStr(date);
+    const isToday = ds === todayStr;
+    const col = document.createElement('div');
+    col.className = 'week-header-day' + (isToday ? ' today-col' : '');
+    col.innerHTML = `<span class="wh-weekday">${weekDayNames[d]}</span>
+                     <span class="wh-date">${date.getDate()}</span>`;
+    header.appendChild(col);
+  }
+
+  // ── 週格線主體 ──
+  const wgrid = document.getElementById('week-grid');
+  wgrid.innerHTML = '';
+
+  // 左邊時間軸
+  const timeCol = document.createElement('div');
+  timeCol.className = 'week-time-col';
+  for (let h = 0; h < 24; h++) {
+    const slot = document.createElement('div');
+    slot.className = 'week-time-slot';
+    slot.textContent = h === 0 ? '' : `${h}:00`;
+    timeCol.appendChild(slot);
+  }
+  wgrid.appendChild(timeCol);
+
+  // 按日期索引行程（用 weekEvents）
+  const eventMap = {};
+  weekEvents.forEach(ev => {
+    const d = (ev.start_dt || '').slice(0, 10);
+    if (!eventMap[d]) eventMap[d] = [];
+    eventMap[d].push(ev);
+  });
+
+  // 每天一欄
+  for (let d = 0; d < 7; d++) {
+    const date = new Date(mon); date.setDate(mon.getDate() + d);
+    const ds = toDateStr(date);
+    const isToday = ds === todayStr;
+
+    const col = document.createElement('div');
+    col.className = 'week-day-col' + (isToday ? ' today-col' : '');
+    col.style.minHeight = '1440px';
+
+    // 畫橫格線（每小時 + 半小時虛線）
+    for (let h = 0; h < 24; h++) {
+      const line = document.createElement('div');
+      line.className = 'week-hour-line';
+      line.style.top = `${h * 60}px`;
+      col.appendChild(line);
+      if (h > 0) {
+        const half = document.createElement('div');
+        half.className = 'week-hour-line half';
+        half.style.top = `${h * 60 - 30}px`;
+        col.appendChild(half);
+      }
+    }
+
+    // 畫行程
+    const dayEvs = (eventMap[ds] || []).sort((a, b) => a.start_dt.localeCompare(b.start_dt));
+    dayEvs.forEach(ev => {
+      const startM = timeToMinutes(ev.start_dt);
+      const endM   = timeToMinutes(ev.end_dt) || (startM + 60);
+      const dur    = Math.max(endM - startM, 30);   // 最少佔 30px
+      const block  = document.createElement('div');
+      block.className = `week-event ${ev.type}`;
+      block.style.top    = `${startM}px`;
+      block.style.height = `${dur}px`;
+      const label = { commission: '📋', showing: '🏠', contract: '🤝' }[ev.type] || '';
+      const timeStr = (ev.start_dt || '').slice(11, 16);
+      block.textContent = `${label} ${timeStr} ${ev.title}`;
+      block.title = ev.title;
+      block.onclick = (e) => { e.stopPropagation(); openSidePanel(ds, ev.id); };
+      col.appendChild(block);
+    });
+
+    // 點空白格子 → 開 Modal 新增行程，時間預填對應小時
+    col.addEventListener('click', (e) => {
+      if (e.target !== col) return;
+      const rect = col.getBoundingClientRect();
+      const y = e.clientY - rect.top + document.getElementById('week-body').scrollTop;
+      const h = Math.floor(y / 60);
+      const hh = String(Math.min(h, 23)).padStart(2, '0');
+      const dtStr = `${ds}T${hh}:00`;
+      openModal(ds, dtStr);
+    });
+
+    wgrid.appendChild(col);
+  }
+
+  // 今天現在時間紅線
+  updateNowLine();
+  if (nowLineTimer) clearInterval(nowLineTimer);
+  nowLineTimer = setInterval(updateNowLine, 60000);  // 每分鐘更新
 }
 
-// 跳回今天所在的月份
+/** 把 "YYYY-MM-DDTHH:MM:SS" 轉成當天的分鐘數（0–1439） */
+function timeToMinutes(dtStr) {
+  if (!dtStr) return 0;
+  const parts = dtStr.slice(11, 16).split(':');
+  return parseInt(parts[0]) * 60 + parseInt(parts[1] || 0);
+}
+
+/** 畫「現在時間」紅線（只在週內有今天才顯示） */
+function updateNowLine() {
+  const line = document.getElementById('week-now-line');
+  const now = new Date();
+  const todayStr = toDateStr(now);
+  const mon = currentWeekMonday;
+
+  // 判斷今天是否在目前週內
+  let todayColIndex = -1;
+  for (let d = 0; d < 7; d++) {
+    const date = new Date(mon); date.setDate(mon.getDate() + d);
+    if (toDateStr(date) === todayStr) { todayColIndex = d; break; }
+  }
+
+  const cols = document.querySelectorAll('.week-day-col');
+  if (todayColIndex < 0 || cols.length === 0) {
+    line.style.display = 'none';
+    return;
+  }
+
+  const todayCol = cols[todayColIndex];
+  const bodyEl = document.getElementById('week-body');
+  const gridEl = document.getElementById('week-grid');
+  const colRect = todayCol.getBoundingClientRect();
+  const gridRect = gridEl.getBoundingClientRect();
+
+  const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+  const topInGrid = minutesSinceMidnight;  // 1分鐘 = 1px
+
+  // 紅線的 left/right 對齊到今天那欄
+  const leftOffset = colRect.left - gridRect.left + 52;  // 52px = 時間軸寬
+  line.style.display = 'block';
+  line.style.top    = `${topInGrid}px`;
+  line.style.left   = `${colRect.left - gridRect.left}px`;
+  line.style.right  = `${gridRect.right - colRect.right}px`;
+  line.style.width  = '';
+}
+
+// ══════════════════════════════════════════
+//  載入週行程（週範圍的 API 請求）
+// ══════════════════════════════════════════
+async function loadWeekEvents() {
+  const mon = currentWeekMonday;
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 7);  // 下週一（不含）
+  const start = toDateStr(mon);
+  const end   = toDateStr(sun);
+  try {
+    const r = await fetch(`/api/events?start=${start}&end=${end}`);
+    if (!r.ok) {
+      if (r.status === 401) { showToast('請先登入', true); return; }
+      throw new Error(await r.text());
+    }
+    weekEvents = await r.json();
+    renderWeek();
+  } catch (e) {
+    showToast('載入週行程失敗：' + e.message, true);
+  }
+}
+
+// ──────────────────────────────────────────
+//  月/週共用的導覽與今天按鈕（舊函式保留，
+//  navPrev/navNext 已統一接管，這裡兼容性保留）
+// ──────────────────────────────────────────
+
+// 跳回今天所在的月份/週
 function goToday() {
   const now = new Date();
   currentYear  = now.getFullYear();
   currentMonth = now.getMonth();
-  renderCalendar();
-  loadEvents();
+  if (currentView === 'week') {
+    currentWeekMonday = getMonday(now);
+    renderWeek();
+    loadWeekEvents();
+  } else {
+    renderCalendar();
+    loadEvents();
+  }
 }
 
 // 把 Date 物件轉成 YYYY-MM-DD 字串，方便比對
@@ -767,7 +1209,9 @@ function openSidePanel(dateStr, highlightId) {
   document.getElementById('side-title').textContent = `${y} 年 ${months[parseInt(m)-1]} ${parseInt(d)} 日`;
 
   const list = document.getElementById('side-events-list');
-  const dayEvs = allEvents.filter(ev => (ev.start_dt || '').startsWith(dateStr));
+  // 月檢視用 allEvents，週檢視用 weekEvents；合併去重後過濾當天
+  const mergedSrc = currentView === 'week' ? weekEvents : allEvents;
+  const dayEvs = mergedSrc.filter(ev => (ev.start_dt || '').startsWith(dateStr));
 
   if (dayEvs.length === 0) {
     // 沒有行程時側欄不應被打開（格子點擊已改為直接開 Modal），這裡保留防呆
@@ -821,18 +1265,29 @@ function closePanel() {
 
 // 開啟 Modal（新增模式）
 // dateStr：從日曆格子點進來時帶入的日期，預填開始時間
-function openModal(dateStr) {
+function openModal(dateStr, dtStr) {
   editingId = null;  // 清空 → 進入新增模式
   document.getElementById('modal-title').textContent = '新增行程';
   clearForm();
 
-  // 預設開始時間 = 點選日期的當下整點
   const ds = dateStr || (selectedDate || toDateStr(new Date()));
   const now = new Date();
-  const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  document.getElementById('f-start').value = `${ds}T${timeStr}`;
-  // 預設結束時間 = 開始時間 +1 小時
-  document.getElementById('f-end').value   = `${ds}T${String(now.getHours()+1).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  let startDt, endDt;
+  if (dtStr) {
+    // 週檢視點格子傳入的完整時間（YYYY-MM-DDTHH:MM）
+    startDt = dtStr;
+    const h = parseInt(dtStr.slice(11, 13));
+    endDt = `${ds}T${String(Math.min(h + 1, 23)).padStart(2, '0')}:00`;
+  } else {
+    // 月檢視點格子：用現在時間整點
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    startDt = `${ds}T${hh}:${mm}`;
+    endDt   = `${ds}T${String(Math.min(now.getHours() + 1, 23)).padStart(2, '0')}:${mm}`;
+  }
+  document.getElementById('f-start').value = startDt;
+  document.getElementById('f-end').value   = endDt;
 
   // 預設行程類型：簽委託約
   setType('commission');
@@ -1108,7 +1563,8 @@ async function saveEvent() {
     // gcal_event_id 有值代表後端成功推送到 Google 日曆
     showToast(editingId ? '行程已更新 ✓' : `行程已新增${ev.gcal_event_id ? '，已同步 Google 日曆 ✓' : ''}`);
     closeModal();
-    await loadEvents();  // 重新拉取行程資料並重繪日曆
+    // 依目前檢視模式重新載入行程
+    if (currentView === 'week') { await loadWeekEvents(); } else { await loadEvents(); }
     // 儲存完成後自動打開該日的側欄，方便使用者確認
     if (selectedDate || ev.start_dt) {
       openSidePanel((ev.start_dt || '').slice(0, 10) || selectedDate, ev.id);
@@ -1164,7 +1620,8 @@ async function deleteEvent(id) {
     const r = await fetch(`/api/events/${id}`, { method: 'DELETE' });
     if (!r.ok) throw new Error('刪除失敗');
     showToast('行程已刪除');
-    await loadEvents();  // 重新拉取並重繪日曆
+    // 依目前檢視模式重新載入
+    if (currentView === 'week') { await loadWeekEvents(); } else { await loadEvents(); }
     // 刪除後重新整理側欄（同一天可能還有其他行程）
     if (selectedDate) openSidePanel(selectedDate);
   } catch (e) {
