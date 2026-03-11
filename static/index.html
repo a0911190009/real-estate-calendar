@@ -694,8 +694,15 @@ function renderCalendar() {
     }
     cell.appendChild(evDiv);
 
-    // 點格子打開側欄
-    cell.onclick = () => openSidePanel(dateStr);
+    // 點格子：有行程→開側欄查看；沒行程→直接開 Modal 新增
+    cell.onclick = () => {
+      const hasEvents = (eventMap[dateStr] || []).length > 0;
+      if (hasEvents) {
+        openSidePanel(dateStr);
+      } else {
+        openModal(dateStr);
+      }
+    };
     grid.appendChild(cell);
   }
 }
@@ -761,22 +768,14 @@ function openSidePanel(dateStr, highlightId) {
   const dayEvs = allEvents.filter(ev => (ev.start_dt || '').startsWith(dateStr));
 
   if (dayEvs.length === 0) {
+    // 沒有行程時側欄不應被打開（格子點擊已改為直接開 Modal），這裡保留防呆
     list.innerHTML = `
       <div style="text-align:center;padding:40px 0;color:var(--text-muted)">
         <div style="font-size:2rem;margin-bottom:8px">📭</div>
         <div>這天還沒有行程</div>
-        <button class="btn-primary" style="margin-top:14px" onclick="openModal('${dateStr}')">＋ 新增行程</button>
       </div>`;
   } else {
     list.innerHTML = '';
-
-    // 「這天新增」按鈕
-    const addBtn = document.createElement('button');
-    addBtn.className = 'btn-primary';
-    addBtn.style.cssText = 'width:100%;margin-bottom:14px';
-    addBtn.textContent = '＋ 新增這天的行程';
-    addBtn.onclick = () => openModal(dateStr);
-    list.appendChild(addBtn);
 
     dayEvs.forEach(ev => {
       const card = document.createElement('div');
