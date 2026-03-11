@@ -950,10 +950,13 @@ function renderAcList(field, items, q) {
     const el = document.createElement('div');
     el.className = 'ac-item';
     if (field === 'prop') {
-      el.innerHTML = `<div>${item.name || item.project_name || ''}</div>
-        <div class="ac-sub">${item.address || item.location_area || ''}</div>`;
+      // Library 回傳中文 key：案名、地址（非英文 name/address）
+      const propName = item['案名'] || item.name || item.project_name || '';
+      const propAddr = item['地址'] || item['縣市鄉鎮'] || item.address || item.location_area || '';
+      el.innerHTML = `<div>${propName}</div>
+        <div class="ac-sub">${propAddr}</div>`;
       el.onclick = () => {
-        document.getElementById('f-prop').value = item.name || item.project_name || '';
+        document.getElementById('f-prop').value = propName;
         document.getElementById('f-prop-id').value = item.id || '';
         acSelected.prop = item;
         acClose('prop');
