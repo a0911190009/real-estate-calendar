@@ -450,24 +450,14 @@ def api_suggest_buyers():
         return jsonify({"items": [], "warning": "BUYER_URL 未設定"})
 
     try:
-        headers = {}
-        if SERVICE_KEY:
-            headers["X-Service-Key"] = SERVICE_KEY
+        # 呼叫 Buyer 工具的公開搜尋端點（不需 session，直接帶關鍵字）
         r = http_requests.get(
-            f"{BUYER_URL.rstrip('/')}/api/buyers",
+            f"{BUYER_URL.rstrip('/')}/api/buyer-suggest",
             params={"q": q},
-            headers=headers,
             timeout=5,
         )
         if r.ok:
-            buyers = r.json()
-            # 統一格式：[{id, name, phone}]
-            items = [
-                {"id": b.get("id", ""), "name": b.get("name", ""), "phone": b.get("phone", "")}
-                for b in (buyers if isinstance(buyers, list) else buyers.get("buyers", []))
-                if q.lower() in b.get("name", "").lower()
-            ]
-            return jsonify({"items": items})
+            return jsonify(r.json())
     except Exception as e:
         logging.warning("suggest buyers error: %s", e)
 
