@@ -496,7 +496,7 @@ body {
   flex-direction: column;
 }
 .week-time-slot {
-  height: 60px;         /* 每小時 60px */
+  height: 60px;         /* 預設值，JS 會動態覆蓋 */
   flex-shrink: 0;
   display: flex;
   align-items: flex-start;
@@ -720,9 +720,15 @@ body {
   <span id="cal-title"></span>
   <button id="btn-today" onclick="goToday()">今天</button>
   <!-- 月/週切換 -->
-  <div id="view-toggle" style="margin-left:auto;">
-    <button class="view-btn active" id="view-month" onclick="switchView('month')">月</button>
-    <button class="view-btn" id="view-week" onclick="switchView('week')">週</button>
+  <div id="view-toggle" style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+    <!-- 週視圖縮放控制（只在週視圖顯示） -->
+    <div id="zoom-ctrl" style="display:none;align-items:center;gap:4px;">
+      <button onclick="adjustZoom(-10)" style="background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:1rem;line-height:1;">−</button>
+      <span id="zoom-label" style="font-size:0.72rem;color:var(--text-muted);min-width:36px;text-align:center;">60px</span>
+      <button onclick="adjustZoom(10)" style="background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:1rem;line-height:1;">＋</button>
+    </div>
+    <button class="view-btn" id="view-month" onclick="switchView('month')">月</button>
+    <button class="view-btn active" id="view-week" onclick="switchView('week')">週</button>
   </div>
 </div>
 
@@ -887,8 +893,9 @@ let endTimeManuallySet = false;
 // ══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
   await loadMe();      // 取得登入者資訊顯示在右上角
-  renderCalendar();    // 先畫出空白日曆骨架
-  await loadEvents();  // 再去後端拉行程資料填入格子
+  renderCalendar();    // 先畫月曆骨架（背景備用）
+  // 預設直接顯示週視圖（當週）
+  switchView('week');
 
   // ── 開始時間變動 → 自動更新結束時間（智慧跟隨）──
   document.getElementById('f-start').addEventListener('change', function () {
@@ -928,7 +935,7 @@ async function loadMe() {
 // ══════════════════════════════════════════
 //  檢視切換：月 / 週
 // ══════════════════════════════════════════
-let currentView = 'month';   // 'month' 或 'week'
+let currentView = 'week';   // 預設週視圖
 // 週檢視用：目前週的週一日期（Date 物件）
 let currentWeekMonday = getMonday(new Date());
 
@@ -949,11 +956,17 @@ function switchView(view) {
   document.getElementById('view-week').classList.toggle('active', view === 'week');
   document.getElementById('cal-container').style.display   = view === 'month' ? '' : 'none';
   document.getElementById('week-container').classList.toggle('visible', view === 'week');
+  // zoom 控制只在週視圖顯示
+  const zoomCtrl = document.getElementById('zoom-ctrl');
+  if (zoomCtrl) zoomCtrl.style.display = view === 'week' ? 'flex' : 'none';
   if (view === 'week') {
-    // 切換到週時，確保週一是目前月份
-    currentWeekMonday = getMonday(new Date(currentYear, currentMonth, 1));
+    // 切到週時顯示當週（以今天為基準）
+    currentWeekMonday = getMonday(new Date());
     renderWeek();
-    loadWeekEvents();
+    loadWeekEvents().then(() => {
+      renderWeek();
+      scrollToNow();
+    });
   } else {
     renderCalendar();
     loadEvents();
@@ -1128,12 +1141,13 @@ function renderWeek() {
   const wgrid = document.getElementById('week-grid');
   wgrid.innerHTML = '';
 
-  // 左邊時間軸
+  // 左邊時間軸（高度跟 hourPx 同步）
   const timeCol = document.createElement('div');
   timeCol.className = 'week-time-col';
   for (let h = 0; h < 24; h++) {
     const slot = document.createElement('div');
     slot.className = 'week-time-slot';
+    slot.style.height = hourPx + 'px';
     slot.textContent = h === 0 ? '' : `${h}:00`;
     timeCol.appendChild(slot);
   }
@@ -1155,18 +1169,18 @@ function renderWeek() {
 
     const col = document.createElement('div');
     col.className = 'week-day-col' + (isToday ? ' today-col' : '');
-    col.style.minHeight = '1440px';
+    col.style.minHeight = (hourPx * 24) + 'px';
 
-    // 畫橫格線（每小時 + 半小時虛線）
+    // 畫橫格線（每小時 + 半小時虛線，跟 hourPx 同步）
     for (let h = 0; h < 24; h++) {
       const line = document.createElement('div');
       line.className = 'week-hour-line';
-      line.style.top = `${h * 60}px`;
+      line.style.top = `${h * hourPx}px`;
       col.appendChild(line);
       if (h > 0) {
         const half = document.createElement('div');
         half.className = 'week-hour-line half';
-        half.style.top = `${h * 60 - 30}px`;
+        half.style.top = `${h * hourPx - hourPx / 2}px`;
         col.appendChild(half);
       }
     }
@@ -1176,11 +1190,12 @@ function renderWeek() {
     dayEvs.forEach(ev => {
       const startM = timeToMinutes(ev.start_dt);
       const endM   = timeToMinutes(ev.end_dt) || (startM + 60);
-      const dur    = Math.max(endM - startM, 30);   // 最少佔 30px
+      const dur    = Math.max(endM - startM, 15);
+      const pxPerMin = hourPx / 60;  // 每分鐘幾 px
       const block  = document.createElement('div');
       block.className = `week-event ${ev.type}`;
-      block.style.top    = `${startM}px`;
-      block.style.height = `${dur}px`;
+      block.style.top    = `${startM * pxPerMin}px`;
+      block.style.height = `${dur * pxPerMin}px`;
       block.dataset.evId = ev.id;
       block.dataset.date = ds;
       const label = { commission: '📋', showing: '🏠', contract: '🤝' }[ev.type] || '';
@@ -1206,12 +1221,13 @@ function renderWeek() {
       col.appendChild(block);
     });
 
-    // 點空白格子 → 開 Modal 新增行程，時間預填對應小時
+    // 點空白格子 → 開 Modal 新增行程（拖曳結束後不觸發）
     col.addEventListener('click', (e) => {
-      if (e.target !== col) return;
+      if (_isDragging) return;      // 剛完成拖曳，忽略這個 click
+      if (e.target !== col) return; // 點到行程 block 也忽略
       const rect = col.getBoundingClientRect();
       const y = e.clientY - rect.top + document.getElementById('week-body').scrollTop;
-      const h = Math.floor(y / 60);
+      const h = Math.floor(y / hourPx);
       const hh = String(Math.min(h, 23)).padStart(2, '0');
       const dtStr = `${ds}T${hh}:00`;
       openModal(ds, dtStr);
@@ -1226,12 +1242,35 @@ function renderWeek() {
   nowLineTimer = setInterval(updateNowLine, 60000);  // 每分鐘更新
 }
 
+// ── 週視圖縮放（每小時高度） ──
+let hourPx = 60; // 預設每小時 60px
+
+function adjustZoom(delta) {
+  hourPx = Math.max(40, Math.min(120, hourPx + delta));
+  document.getElementById('zoom-label').textContent = hourPx + 'px';
+  // 重新 render 週視圖
+  renderWeek();
+  // 更新 scrollTop 讓現在時間保持可見
+  scrollToNow();
+}
+
+function scrollToNow() {
+  const now = new Date();
+  const m = now.getHours() * 60 + now.getMinutes();
+  const body = document.getElementById('week-body');
+  if (body) body.scrollTop = Math.max(0, (m / 60) * hourPx - 200);
+}
+
 // ── 拖曳功能：移動行程 ──
+// 全域 flag：拖曳進行中，阻止 col click 觸發 openModal
+let _isDragging = false;
+
 function startMoveDrag(e, block, ev, wgrid, weekMon) {
-  const SNAP = 15; // 15 分鐘對齊
+  const pxPerMin = hourPx / 60;
+  const SNAP_PX = 15 * pxPerMin; // 15 分鐘對應的 px
   let moved = false;
-  const origTop = parseInt(block.style.top);
-  const origHeight = parseInt(block.style.height);
+  const origTop = parseFloat(block.style.top);
+  const origHeight = parseFloat(block.style.height);
   const startY = e.clientY;
   const startX = e.clientX;
 
@@ -1261,10 +1300,10 @@ function startMoveDrag(e, block, ev, wgrid, weekMon) {
     if (!moved && Math.abs(dy) < 5 && Math.abs(dx) < 5) return;
     moved = true;
 
-    // 計算新的時間（Y軸）
+    // 計算新的時間（Y軸），對齊 15 分鐘
     let newTop = origTop + dy;
-    newTop = Math.round(newTop / SNAP) * SNAP; // 對齊 15 分鐘
-    newTop = Math.max(0, Math.min(1440 - origHeight, newTop));
+    newTop = Math.round(newTop / SNAP_PX) * SNAP_PX;
+    newTop = Math.max(0, Math.min(hourPx * 24 - origHeight, newTop));
     ghost.style.top = newTop + 'px';
 
     // 判斷是否跨欄（X軸）
@@ -1290,10 +1329,14 @@ function startMoveDrag(e, block, ev, wgrid, weekMon) {
     if (!moved) {
       // 沒有移動 → 視為點擊，開啟 side panel
       block.classList.remove('drag-placeholder');
-      currentCol.removeChild(ghost);
+      if (ghost.parentElement) ghost.parentElement.removeChild(ghost);
       openSidePanel(ev.start_dt.slice(0, 10), ev.id);
       return;
     }
+
+    // 設旗標，讓 col 的 click 事件知道這是拖曳結束，不要新增行程
+    _isDragging = true;
+    setTimeout(() => { _isDragging = false; }, 300);
 
     // 計算新的日期欄
     const newColIndex = dayCols.indexOf(currentCol);
@@ -1301,8 +1344,8 @@ function startMoveDrag(e, block, ev, wgrid, weekMon) {
     newDate.setDate(weekMon.getDate() + newColIndex);
     const newDateStr = toDateStr(newDate);
 
-    // 計算新的開始/結束時間
-    const newStartM = Math.round(parseInt(ghost.style.top) / SNAP) * SNAP;
+    // 計算新的開始/結束時間（px → 分鐘）
+    const newStartM = Math.round(parseFloat(ghost.style.top) / pxPerMin / 15) * 15;
     const duration = timeToMinutes(ev.end_dt) - timeToMinutes(ev.start_dt) || 60;
     const newEndM = Math.min(newStartM + duration, 1439);
 
@@ -1333,18 +1376,19 @@ function startMoveDrag(e, block, ev, wgrid, weekMon) {
 
 // ── 拖曳功能：調整結束時間（resize） ──
 function startResizeDrag(e, block, ev, col) {
-  const SNAP = 15;
+  const pxPerMin = hourPx / 60;
+  const SNAP_PX = 15 * pxPerMin;
   const startY = e.clientY;
-  const origHeight = parseInt(block.style.height);
-  const origTop = parseInt(block.style.top);
+  const origHeight = parseFloat(block.style.height);
+  const origTop = parseFloat(block.style.top);
 
   block.classList.add('dragging');
 
   const onMove = (me) => {
     const dy = me.clientY - startY;
     let newH = origHeight + dy;
-    newH = Math.round(newH / SNAP) * SNAP;
-    newH = Math.max(SNAP, Math.min(1440 - origTop, newH));
+    newH = Math.round(newH / SNAP_PX) * SNAP_PX;
+    newH = Math.max(SNAP_PX, Math.min(hourPx * 24 - origTop, newH));
     block.style.height = newH + 'px';
   };
 
@@ -1352,10 +1396,12 @@ function startResizeDrag(e, block, ev, col) {
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
     block.classList.remove('dragging');
+    _isDragging = true;
+    setTimeout(() => { _isDragging = false; }, 300);
 
-    const newEndM = origTop + parseInt(block.style.height);
+    const newEndM = Math.round((origTop + parseFloat(block.style.height)) / pxPerMin / 15) * 15;
     const dateStr = ev.start_dt.slice(0, 10);
-    const newEndDt = `${dateStr}T${minsToTimeStr(Math.min(newEndM, 1439))}:00`;
+    const newEndDt = `${dateStr}T${minsToTimeStr(Math.min(Math.round(newEndM), 1439))}:00`;
 
     try {
       await fetch(`/api/events/${ev.id}`, {
@@ -1417,7 +1463,7 @@ function updateNowLine() {
   const gridRect = gridEl.getBoundingClientRect();
 
   const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
-  const topInGrid = minutesSinceMidnight;  // 1分鐘 = 1px
+  const topInGrid = minutesSinceMidnight * (hourPx / 60);  // 跟 hourPx 同步
 
   // 紅線的 left/right 對齊到今天那欄
   const leftOffset = colRect.left - gridRect.left + 52;  // 52px = 時間軸寬
