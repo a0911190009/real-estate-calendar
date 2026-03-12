@@ -113,10 +113,9 @@ def auth_portal_login():
     session["user_name"]  = payload.get("name", "")
     session["user_picture"] = payload.get("picture", "")
     session.modified = True
-    return """<!DOCTYPE html><html><head><meta charset="utf-8">
-<meta http-equiv="refresh" content="0;url=/">
-<script>window.location.replace("/");</script>
-</head><body></body></html>"""
+    # 直接 serve 靜態首頁（不做任何 redirect），Set-Cookie 與 HTML 在同一個 response
+    # 避免 Chrome SameSite 問題：跨站 redirect 後瀏覽器帶不到剛設的 cookie
+    return send_from_directory("static", "index.html")
 
 
 @app.route("/auth/logout", methods=["POST"])
