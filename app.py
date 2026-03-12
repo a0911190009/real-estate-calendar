@@ -69,6 +69,17 @@ LIBRARY_URL     = (os.environ.get("LIBRARY_URL") or "").strip()
 BUYER_URL       = (os.environ.get("BUYER_URL") or "").strip()
 ADMIN_EMAILS    = [e.strip() for e in (os.environ.get("ADMIN_EMAILS") or "").split(",") if e.strip()]
 SERVICE_KEY     = os.environ.get("SERVICE_KEY", "")
+SERVICE_API_KEY = os.environ.get("SERVICE_API_KEY", "") or SERVICE_KEY  # 統一用 SERVICE_API_KEY
+
+
+def _verify_service_key():
+    """驗證 X-Service-Key header。"""
+    import hmac as _hmac
+    key_to_check = SERVICE_API_KEY or SERVICE_KEY
+    if not key_to_check:
+        return False
+    key = request.headers.get("X-Service-Key", "")
+    return _hmac.compare_digest(key, key_to_check)
 TOKEN_SERIALIZER = URLSafeTimedSerializer(app.secret_key)
 TOKEN_MAX_AGE   = 300  # 5 分鐘，容忍 Cloud Run cold start
 
@@ -410,6 +421,95 @@ def api_event_delete(event_id):
 
     doc_ref.delete()
     return jsonify({"ok": True})
+
+
+# ══════════════════════════════════════════
+#  Agent 專用端點（X-Service-Key 驗證）
+# ══════════════════════════════════════════
+
+@app.route("/api/events/list-for-agent", methods=["GET"])
+def api_events_list_for_agent():
+    """Agent 專用：列出指定用戶的行程（簡化版）。
+    Query: email=xxx, start=YYYY-MM-DD, end=YYYY-MM-DD"""
+    if not _verify_service_key():
+        return jsonify({"error": "需要有效的 X-Service-Key"}), 401
+    email = (request.args.get("email") or "").strip()
+    if not email:
+        return jsonify({"error": "缺少 email"}), 400
+    col = _events_col()
+    if col is None:
+        return jsonify({"items": []})
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone(timedelta(hours=8)))
+    start_str = request.args.get("start", now.strftime("%Y-%m-%d"))
+    end_str   = request.args.get("end", (now + timedelta(days=7)).strftime("%Y-%m-%d"))
+    try:
+        docs = col.where("created_by", "==", email).stream()
+        items = []
+        for d in docs:
+            item = d.to_dict()
+            item["id"] = d.id
+            start_dt = item.get("start_dt", "")
+            if start_str <= start_dt[:10] <= end_str:
+                items.append({
+                    "id": d.id,
+                    "type": item.get("type", ""),
+                    "title": item.get("title", ""),
+                    "start_dt": start_dt,
+                    "end_dt": item.get("end_dt", ""),
+                    "buyer_name": item.get("buyer_name", ""),
+                    "prop_name": item.get("prop_name", ""),
+                    "note": item.get("note", ""),
+                })
+        items.sort(key=lambda x: x.get("start_dt", ""))
+        return jsonify({"items": items})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/events/create-for-agent", methods=["POST"])
+def api_events_create_for_agent():
+    """Agent 專用：代指定用戶新增行程。
+    Body: { email, type, title, start_dt, end_dt, buyer_name, prop_name, note }"""
+    if not _verify_service_key():
+        return jsonify({"error": "需要有效的 X-Service-Key"}), 401
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip()
+    if not email:
+        return jsonify({"error": "缺少 email"}), 400
+    event_type = (data.get("type") or "showing").strip()
+    if event_type not in ("commission", "showing", "contract"):
+        event_type = "showing"
+    col = _events_col()
+    if col is None:
+        return jsonify({"error": "Firestore 不可用"}), 503
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone(timedelta(hours=8)))
+    start_dt = data.get("start_dt") or now.strftime("%Y-%m-%dT10:00:00")
+    end_dt   = data.get("end_dt")   or (now + timedelta(hours=1)).strftime("%Y-%m-%dT11:00:00")
+    # 自動產生標題
+    title = data.get("title") or ""
+    if not title:
+        type_map = {"showing": "帶看", "commission": "簽委託", "contract": "簽買賣"}
+        label = type_map.get(event_type, "行程")
+        buyer = data.get("buyer_name", "")
+        prop  = data.get("prop_name", "")
+        title = f"{label}" + (f"－{buyer}" if buyer else "") + (f"｜{prop}" if prop else "")
+    event = {
+        "type": event_type, "title": title,
+        "start_dt": start_dt, "end_dt": end_dt,
+        "buyer_name": data.get("buyer_name", ""),
+        "prop_name": data.get("prop_name", ""),
+        "note": data.get("note", ""),
+        "created_by": email,
+        "created_at": now.isoformat(),
+    }
+    try:
+        doc_ref = col.document()
+        doc_ref.set(event)
+        return jsonify({"ok": True, "id": doc_ref.id, "title": title})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ══════════════════════════════════════════
