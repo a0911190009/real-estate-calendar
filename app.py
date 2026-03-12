@@ -96,10 +96,10 @@ def _require_user():
 #  登入 / 登出
 # ══════════════════════════════════════════
 
-@app.route("/auth/portal-login")
+@app.route("/auth/portal-login", methods=["GET", "POST"])
 def auth_portal_login():
     """Portal 跳轉過來時，驗證 token 建立 session。"""
-    token = request.args.get("token", "")
+    token = request.form.get("token") or request.args.get("token", "")
     if not token:
         return redirect(PORTAL_URL or "/")
     try:
