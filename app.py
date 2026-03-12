@@ -60,8 +60,9 @@ _secret = os.environ.get("FLASK_SECRET_KEY", "")
 if not _secret:
     logging.warning("FLASK_SECRET_KEY 未設定，使用預設 dev key，請盡快補上環境變數。")
 app.secret_key = _secret or "dev-only-insecure-key"
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = not os.environ.get("FLASK_DEBUG")
+# SameSite=None：Portal 跨站跳轉後瀏覽器才能正確帶 session cookie
+app.config["SESSION_COOKIE_SAMESITE"] = "None"
+app.config["SESSION_COOKIE_SECURE"] = True
 
 PORTAL_URL      = (os.environ.get("PORTAL_URL") or "").strip()
 LIBRARY_URL     = (os.environ.get("LIBRARY_URL") or "").strip()
