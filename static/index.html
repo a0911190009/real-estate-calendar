@@ -533,19 +533,50 @@ body {
   position: absolute;
   left: 3px; right: 3px;
   border-radius: 5px;
-  padding: 3px 6px;
+  padding: 3px 6px 10px 6px;
   font-size: 0.72rem;
   font-weight: 600;
-  cursor: pointer;
+  cursor: grab;
   overflow: hidden;
   line-height: 1.3;
-  transition: opacity .15s, filter .15s;
+  transition: opacity .15s, filter .15s, box-shadow .15s;
   z-index: 1;
+  user-select: none;
 }
-.week-event:hover { opacity: .85; filter: brightness(1.1); }
+.week-event:hover { opacity: .9; filter: brightness(1.1); }
+.week-event.dragging {
+  cursor: grabbing;
+  opacity: 0.75;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  z-index: 100;
+  transition: none;
+}
+.week-event.drag-placeholder {
+  opacity: 0.3;
+  pointer-events: none;
+  border: 2px dashed currentColor;
+  background: transparent !important;
+}
 .week-event.commission { background: rgba(245,158,11,.3); color: #fbbf24; border-left: 3px solid var(--commission); }
 .week-event.showing    { background: rgba(16,185,129,.25); color: #34d399; border-left: 3px solid var(--showing); }
 .week-event.contract   { background: rgba(139,92,246,.3); color: #a78bfa; border-left: 3px solid var(--contract); }
+/* resize handle：行程底部拖曳調整結束時間 */
+.week-event-resize {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.week-event-resize::after {
+  content: '';
+  width: 24px; height: 3px;
+  background: currentColor;
+  border-radius: 2px;
+  opacity: 0.5;
+}
 
 /* 週檢視的「今天現在時間」紅線 */
 #week-now-line {
@@ -1150,11 +1181,28 @@ function renderWeek() {
       block.className = `week-event ${ev.type}`;
       block.style.top    = `${startM}px`;
       block.style.height = `${dur}px`;
+      block.dataset.evId = ev.id;
+      block.dataset.date = ds;
       const label = { commission: '📋', showing: '🏠', contract: '🤝' }[ev.type] || '';
       const timeStr = (ev.start_dt || '').slice(11, 16);
-      block.textContent = `${label} ${timeStr} ${ev.title}`;
+      const textNode = document.createElement('span');
+      textNode.textContent = `${label} ${timeStr} ${ev.title}`;
+      block.appendChild(textNode);
       block.title = ev.title;
-      block.onclick = (e) => { e.stopPropagation(); openSidePanel(ds, ev.id); };
+      // resize handle（底部拖曳）
+      const resizeHandle = document.createElement('div');
+      resizeHandle.className = 'week-event-resize';
+      resizeHandle.addEventListener('mousedown', (e) => {
+        e.stopPropagation(); e.preventDefault();
+        startResizeDrag(e, block, ev, col);
+      });
+      block.appendChild(resizeHandle);
+      // 點擊開啟（沒有拖曳時才觸發）
+      block.addEventListener('mousedown', (e) => {
+        if (e.target === resizeHandle || resizeHandle.contains(e.target)) return;
+        e.stopPropagation();
+        startMoveDrag(e, block, ev, wgrid, mon);
+      });
       col.appendChild(block);
     });
 
@@ -1176,6 +1224,163 @@ function renderWeek() {
   updateNowLine();
   if (nowLineTimer) clearInterval(nowLineTimer);
   nowLineTimer = setInterval(updateNowLine, 60000);  // 每分鐘更新
+}
+
+// ── 拖曳功能：移動行程 ──
+function startMoveDrag(e, block, ev, wgrid, weekMon) {
+  const SNAP = 15; // 15 分鐘對齊
+  let moved = false;
+  const origTop = parseInt(block.style.top);
+  const origHeight = parseInt(block.style.height);
+  const startY = e.clientY;
+  const startX = e.clientX;
+
+  // 找出所有日期欄（排除時間軸）
+  const dayCols = Array.from(wgrid.querySelectorAll('.week-day-col'));
+  const origColIndex = dayCols.indexOf(block.parentElement);
+
+  // 建立拖曳中的視覺複製（ghost）
+  const ghost = block.cloneNode(true);
+  ghost.style.opacity = '0.85';
+  ghost.style.pointerEvents = 'none';
+  ghost.style.zIndex = '200';
+  ghost.classList.add('dragging');
+  ghost.style.width = block.offsetWidth + 'px';
+  ghost.style.left = block.style.left;
+  ghost.style.right = block.style.right;
+
+  // 原本位置顯示佔位虛線框
+  block.classList.add('drag-placeholder');
+
+  let currentCol = block.parentElement;
+  currentCol.appendChild(ghost);
+
+  const onMove = (me) => {
+    const dy = me.clientY - startY;
+    const dx = me.clientX - startX;
+    if (!moved && Math.abs(dy) < 5 && Math.abs(dx) < 5) return;
+    moved = true;
+
+    // 計算新的時間（Y軸）
+    let newTop = origTop + dy;
+    newTop = Math.round(newTop / SNAP) * SNAP; // 對齊 15 分鐘
+    newTop = Math.max(0, Math.min(1440 - origHeight, newTop));
+    ghost.style.top = newTop + 'px';
+
+    // 判斷是否跨欄（X軸）
+    const bodyRect = document.getElementById('week-body').getBoundingClientRect();
+    const scrollLeft = document.getElementById('week-body').scrollLeft || 0;
+    dayCols.forEach((col, i) => {
+      const rect = col.getBoundingClientRect();
+      if (me.clientX >= rect.left && me.clientX <= rect.right) {
+        if (col !== currentCol) {
+          currentCol.removeChild(ghost);
+          currentCol = col;
+          currentCol.appendChild(ghost);
+          block.parentElement !== currentCol && block.parentElement.contains(block);
+        }
+      }
+    });
+  };
+
+  const onUp = async (ue) => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+
+    if (!moved) {
+      // 沒有移動 → 視為點擊，開啟 side panel
+      block.classList.remove('drag-placeholder');
+      currentCol.removeChild(ghost);
+      openSidePanel(ev.start_dt.slice(0, 10), ev.id);
+      return;
+    }
+
+    // 計算新的日期欄
+    const newColIndex = dayCols.indexOf(currentCol);
+    const newDate = new Date(weekMon);
+    newDate.setDate(weekMon.getDate() + newColIndex);
+    const newDateStr = toDateStr(newDate);
+
+    // 計算新的開始/結束時間
+    const newStartM = Math.round(parseInt(ghost.style.top) / SNAP) * SNAP;
+    const duration = timeToMinutes(ev.end_dt) - timeToMinutes(ev.start_dt) || 60;
+    const newEndM = Math.min(newStartM + duration, 1439);
+
+    const newStartDt = `${newDateStr}T${minsToTimeStr(newStartM)}:00`;
+    const newEndDt   = `${newDateStr}T${minsToTimeStr(newEndM)}:00`;
+
+    try {
+      await fetch(`/api/events/${ev.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...ev, start_dt: newStartDt, end_dt: newEndDt })
+      });
+      showToast('行程已更新');
+    } catch(err) {
+      showToast('更新失敗', true);
+    }
+
+    block.classList.remove('drag-placeholder');
+    if (ghost.parentElement) ghost.parentElement.removeChild(ghost);
+    // 重新載入
+    if (currentView === 'week') { await loadWeekEvents(); renderWeek(); }
+    else { await loadDayEvents(); renderDay(); }
+  };
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+// ── 拖曳功能：調整結束時間（resize） ──
+function startResizeDrag(e, block, ev, col) {
+  const SNAP = 15;
+  const startY = e.clientY;
+  const origHeight = parseInt(block.style.height);
+  const origTop = parseInt(block.style.top);
+
+  block.classList.add('dragging');
+
+  const onMove = (me) => {
+    const dy = me.clientY - startY;
+    let newH = origHeight + dy;
+    newH = Math.round(newH / SNAP) * SNAP;
+    newH = Math.max(SNAP, Math.min(1440 - origTop, newH));
+    block.style.height = newH + 'px';
+  };
+
+  const onUp = async () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    block.classList.remove('dragging');
+
+    const newEndM = origTop + parseInt(block.style.height);
+    const dateStr = ev.start_dt.slice(0, 10);
+    const newEndDt = `${dateStr}T${minsToTimeStr(Math.min(newEndM, 1439))}:00`;
+
+    try {
+      await fetch(`/api/events/${ev.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...ev, end_dt: newEndDt })
+      });
+      showToast('結束時間已更新');
+    } catch(err) {
+      showToast('更新失敗', true);
+    }
+
+    if (currentView === 'week') { await loadWeekEvents(); renderWeek(); }
+    else { await loadDayEvents(); renderDay(); }
+  };
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+/** 分鐘數轉 "HH:MM" */
+function minsToTimeStr(m) {
+  const h = Math.floor(m / 60) % 24;
+  const min = m % 60;
+  return String(h).padStart(2,'0') + ':' + String(min).padStart(2,'0');
 }
 
 /** 把 "YYYY-MM-DDTHH:MM:SS" 轉成當天的分鐘數（0–1439） */
