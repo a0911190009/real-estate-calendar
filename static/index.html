@@ -658,13 +658,15 @@ body {
 .av-wrap img { width: 100%; height: 100%; object-fit: cover; }
 .av-fb { color: #fff; font-weight: 700; font-size: 0.9rem; }
 
-/* ── 積分徽章 ── */
+/* ── 積分/管理員/訂閱 徽章 ── */
 .points-pill {
   display: inline-block; padding: 1px 7px;
   border-radius: 99px; font-size: 0.72rem; font-weight: 600;
 }
-.points { background: rgba(59,130,246,.12); color: var(--primary); }
-.points-pro { background: rgba(234,179,8,.15); color: #b45309; }
+.points-pill.points { background: rgba(59,130,246,.12); color: var(--primary); }
+.points-pill.admin  { background: rgba(139,92,246,.2);  color: rgb(196,167,255); }
+.points-pill.sub    { background: rgba(34,197,94,.2);   color: rgb(134,239,172); }
+.dd-item { display: flex; align-items: center; gap: 10px; }
 
 /* ── 使用者 Dropdown ── */
 #cal-user-dropdown {
@@ -785,7 +787,10 @@ body {
     <span id="cal-dd-badge" class="points-pill points" style="margin-top:4px;">— 點</span>
   </div>
   <div style="padding:4px 0;">
-    <button class="dd-item" onclick="calCloseDropdown();document.getElementById('theme-panel') && (document.getElementById('theme-panel').style.display='block');">🎨 外觀設定</button>
+    <a id="cal-dd-plans"   href="javascript:void(0)" class="dd-item hidden">⬆️ 升級方案</a>
+    <a id="cal-dd-account" href="javascript:void(0)" class="dd-item hidden">👤 帳號管理</a>
+    <a id="cal-dd-admin"   href="javascript:void(0)" class="dd-item hidden">🛡️ 後台管理</a>
+    <button class="dd-item" onclick="calCloseDropdown();">🎨 外觀設定</button>
   </div>
   <div class="dd-divider"></div>
   <div style="padding:4px 0;">
@@ -1047,26 +1052,43 @@ function _setAvatar(ids, pictureUrl, name) {
 async function loadMe() {
   try {
     const r = await fetch('/api/me');
-    if (r.ok) {
-      const d = await r.json();
-      // 頂部文字（舊）
-      const ui = document.getElementById('user-info');
-      if (ui) ui.textContent = d.name || d.email || '';
-      // Sidebar 頭像與姓名
-      _setAvatar(['sb-avatar'], d.picture || '', d.name || '');
-      const sbName = document.getElementById('sb-name');
-      if (sbName) sbName.textContent = d.name || d.email || '';
-      // 積分徽章
-      const pts = d.points != null ? d.points + ' 點' : '— 點';
-      const planCls = d.plan === 'pro' ? 'points-pill points-pro' : 'points-pill points';
-      ['sb-badge', 'cal-dd-badge'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.textContent = pts; el.className = planCls; }
-      });
-      // Dropdown 姓名
-      const ddName = document.getElementById('cal-dd-name');
-      if (ddName) ddName.textContent = d.name || d.email || '';
-    }
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.error) return;
+
+    // 頂部文字（舊）
+    const ui = document.getElementById('user-info');
+    if (ui) ui.textContent = d.name || d.email || '';
+
+    // Sidebar 頭像與姓名
+    _setAvatar(['sb-avatar'], d.picture || '', d.name || '');
+    const sbName = document.getElementById('sb-name');
+    if (sbName) sbName.textContent = d.name || d.email || '';
+
+    // Dropdown 姓名
+    const ddName = document.getElementById('cal-dd-name');
+    if (ddName) ddName.textContent = d.name || d.email || '';
+
+    // 積分/管理員/訂閱 徽章（和 Portal 一致）
+    const subActive = d.subscription_active ||
+      (d.subscription_end ? new Date(d.subscription_end.replace('Z','').slice(0,19)).getTime() > Date.now() : false);
+    ['sb-badge', 'cal-dd-badge'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = 'points-pill';
+      if (d.is_admin) {
+        el.classList.add('admin'); el.textContent = '管理員';
+      } else if (subActive) {
+        el.classList.add('sub');
+        el.textContent = d.subscription_plan === 'yearly' ? '年訂閱' : '月訂閱';
+      } else {
+        el.classList.add('points');
+        el.textContent = (d.points != null ? d.points : 0) + ' 點';
+      }
+    });
+
+    // Dropdown 連結（config 載完後才有 _PORTAL_URL，這裡先存 is_admin 狀態讓 config callback 用）
+    window._calIsAdmin = !!d.is_admin;
   } catch {}
 }
 
@@ -2225,6 +2247,15 @@ document.addEventListener('keydown', e => {
       var portalUrl = (cfg.portal_url || '').replace(/\/$/, '');
       if (!portalUrl || portalUrl === '/') return;
       var portalBase = portalUrl;
+      // 存到全域，供 loadMe() 的 Dropdown 連結使用
+      window._PORTAL_URL = portalUrl;
+      // Dropdown 連結（升級方案、帳號管理、後台管理）
+      var ddPlans   = document.getElementById('cal-dd-plans');
+      var ddAccount = document.getElementById('cal-dd-account');
+      var ddAdmin   = document.getElementById('cal-dd-admin');
+      if (ddPlans)   { ddPlans.href   = portalBase + '/plans';   ddPlans.classList.remove('hidden'); }
+      if (ddAccount) { ddAccount.href = portalBase + '/account'; ddAccount.classList.remove('hidden'); }
+      if (ddAdmin && window._calIsAdmin) { ddAdmin.href = portalBase + '/admin'; ddAdmin.classList.remove('hidden'); }
       // Sidebar 連結
       var sbPortal = document.getElementById('sb-portal-home');
       if (sbPortal) { sbPortal.href = portalUrl; sbPortal.target = 'tool-portal'; sbPortal.classList.remove('hidden'); }
