@@ -790,7 +790,7 @@ body {
     <a id="cal-dd-plans"   href="javascript:void(0)" class="dd-item hidden">⬆️ 升級方案</a>
     <a id="cal-dd-account" href="javascript:void(0)" class="dd-item hidden">👤 帳號管理</a>
     <a id="cal-dd-admin"   href="javascript:void(0)" class="dd-item hidden">🛡️ 後台管理</a>
-    <button class="dd-item" onclick="calCloseDropdown();">🎨 外觀設定</button>
+    <a id="cal-dd-theme"   href="javascript:void(0)" class="dd-item">🎨 外觀設定</a>
   </div>
   <div class="dd-divider"></div>
   <div style="padding:4px 0;">
@@ -1087,8 +1087,16 @@ async function loadMe() {
       }
     });
 
-    // Dropdown 連結（config 載完後才有 _PORTAL_URL，這裡先存 is_admin 狀態讓 config callback 用）
-    window._calIsAdmin = !!d.is_admin;
+    // 後台管理：is_admin 才顯示
+    const ddAdmin = document.getElementById('cal-dd-admin');
+    if (ddAdmin) {
+      if (d.is_admin) ddAdmin.classList.remove('hidden');
+      else ddAdmin.classList.add('hidden');
+    }
+    // 外觀設定：導向 Portal 的 /account（行事曆本身無外觀設定面板）
+    const portalBase2 = (window._PORTAL_URL || '').replace(/\/$/, '');
+    const ddTheme = document.getElementById('cal-dd-theme');
+    if (ddTheme && portalBase2) { ddTheme.href = portalBase2 + '/account'; }
   } catch {}
 }
 
@@ -2255,7 +2263,7 @@ document.addEventListener('keydown', e => {
       var ddAdmin   = document.getElementById('cal-dd-admin');
       if (ddPlans)   { ddPlans.href   = portalBase + '/plans';   ddPlans.classList.remove('hidden'); }
       if (ddAccount) { ddAccount.href = portalBase + '/account'; ddAccount.classList.remove('hidden'); }
-      if (ddAdmin && window._calIsAdmin) { ddAdmin.href = portalBase + '/admin'; ddAdmin.classList.remove('hidden'); }
+      if (ddAdmin) { ddAdmin.href = portalBase + '/admin'; ddAdmin.classList.remove('hidden'); }
       // Sidebar 連結
       var sbPortal = document.getElementById('sb-portal-home');
       if (sbPortal) { sbPortal.href = portalUrl; sbPortal.target = 'tool-portal'; sbPortal.classList.remove('hidden'); }
