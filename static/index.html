@@ -618,6 +618,7 @@ body {
   border-bottom: 1px solid var(--border);
   margin-bottom: 8px;
 }
+#app-sidebar nav { flex: 1; }
 #app-sidebar nav a {
   display: block;
   padding: 8px 16px;
@@ -630,6 +631,76 @@ body {
 }
 #app-sidebar nav a:hover { background: var(--surface2); color: var(--text); }
 #app-sidebar nav a.active { background: rgba(59,130,246,.15); color: var(--primary); font-weight: 600; }
+
+/* ── Sidebar 使用者區塊 ── */
+.sb-user {
+  padding: 10px 12px 4px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+.sb-user button {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 8px 10px;
+  border: none; background: none;
+  border-radius: 10px; cursor: pointer;
+  transition: background .15s;
+  text-align: left;
+}
+.sb-user button:hover { background: var(--surface2); }
+
+/* ── 頭像 ── */
+.av-wrap {
+  border-radius: 50%; overflow: hidden;
+  background: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.av-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.av-fb { color: #fff; font-weight: 700; font-size: 0.9rem; }
+
+/* ── 積分徽章 ── */
+.points-pill {
+  display: inline-block; padding: 1px 7px;
+  border-radius: 99px; font-size: 0.72rem; font-weight: 600;
+}
+.points { background: rgba(59,130,246,.12); color: var(--primary); }
+.points-pro { background: rgba(234,179,8,.15); color: #b45309; }
+
+/* ── 使用者 Dropdown ── */
+#cal-user-dropdown {
+  position: fixed; bottom: 80px; left: 12px;
+  width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  z-index: 600;
+  display: none;
+  overflow: hidden;
+}
+#cal-user-dropdown .dd-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+#cal-user-dropdown .dd-header p {
+  font-size: 0.88rem; font-weight: 600;
+  color: var(--text); margin: 0 0 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#cal-user-dropdown a, #cal-user-dropdown button.dd-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  font-size: 0.85rem; color: var(--text-muted);
+  text-decoration: none; cursor: pointer;
+  transition: background .15s, color .15s;
+  width: 100%; border: none; background: none; text-align: left;
+}
+#cal-user-dropdown a:hover, #cal-user-dropdown button.dd-item:hover {
+  background: var(--surface2); color: var(--text);
+}
+#cal-user-dropdown .dd-divider { height: 1px; background: var(--border); margin: 4px 0; }
+#cal-user-dropdown .dd-danger { color: #ef4444; }
+#cal-user-dropdown .dd-danger:hover { background: rgba(239,68,68,.08); color: #dc2626; }
 
 /* 有 Sidebar 時，主內容向右偏移 */
 @media (min-width: 768px) {
@@ -692,7 +763,36 @@ body {
     <a href="javascript:void(0)" id="sb-survey" class="hidden">📍 周邊調查</a>
     <a href="#" class="active">📅 業務行事曆</a>
   </nav>
+  <!-- 使用者頭像區（點擊展開 Dropdown） -->
+  <div class="sb-user">
+    <button type="button" onclick="calToggleDropdown(event)">
+      <div id="sb-avatar" class="av-wrap" style="width:36px;height:36px;">
+        <div class="av-fb">?</div>
+      </div>
+      <div style="min-width:0;flex:1;">
+        <div id="sb-name" style="font-size:0.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <span id="sb-badge" class="points-pill points" style="margin-top:2px;">— 點</span>
+      </div>
+      <svg style="width:16px;height:16px;color:var(--text-muted);flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+  </div>
 </aside>
+
+<!-- ── 使用者 Dropdown ── -->
+<div id="cal-user-dropdown">
+  <div class="dd-header">
+    <p id="cal-dd-name">載入中…</p>
+    <span id="cal-dd-badge" class="points-pill points" style="margin-top:4px;">— 點</span>
+  </div>
+  <div style="padding:4px 0;">
+    <button class="dd-item" onclick="calCloseDropdown();document.getElementById('theme-panel') && (document.getElementById('theme-panel').style.display='block');">🎨 外觀設定</button>
+  </div>
+  <div class="dd-divider"></div>
+  <div style="padding:4px 0;">
+    <button class="dd-item dd-danger" onclick="calDoLogout()">🚪 登出</button>
+  </div>
+</div>
+<div id="cal-dd-backdrop" style="display:none;position:fixed;inset:0;z-index:499;" onclick="calCloseDropdown()"></div>
 
 <!-- ── 主內容包裝（Sidebar 右側） ── -->
 <div id="main-wrap">
@@ -926,15 +1026,71 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
-// 取得目前登入者姓名，顯示在頂部工具列
+// ── 頭像輔助函數 ──
+function _setAvatar(ids, pictureUrl, name) {
+  ids.forEach(id => {
+    const wrap = document.getElementById(id);
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    if (pictureUrl) {
+      const img = document.createElement('img');
+      img.src = pictureUrl;
+      img.onerror = () => { wrap.innerHTML = '<div class="av-fb">' + (name ? name[0].toUpperCase() : '?') + '</div>'; };
+      wrap.appendChild(img);
+    } else {
+      wrap.innerHTML = '<div class="av-fb">' + (name ? name[0].toUpperCase() : '?') + '</div>';
+    }
+  });
+}
+
+// 取得目前登入者姓名，顯示在頂部工具列與 Sidebar 頭像
 async function loadMe() {
   try {
     const r = await fetch('/api/me');
     if (r.ok) {
       const d = await r.json();
-      document.getElementById('user-info').textContent = d.name || d.email || '';
+      // 頂部文字（舊）
+      const ui = document.getElementById('user-info');
+      if (ui) ui.textContent = d.name || d.email || '';
+      // Sidebar 頭像與姓名
+      _setAvatar(['sb-avatar'], d.picture || '', d.name || '');
+      const sbName = document.getElementById('sb-name');
+      if (sbName) sbName.textContent = d.name || d.email || '';
+      // 積分徽章
+      const pts = d.points != null ? d.points + ' 點' : '— 點';
+      const planCls = d.plan === 'pro' ? 'points-pill points-pro' : 'points-pill points';
+      ['sb-badge', 'cal-dd-badge'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.textContent = pts; el.className = planCls; }
+      });
+      // Dropdown 姓名
+      const ddName = document.getElementById('cal-dd-name');
+      if (ddName) ddName.textContent = d.name || d.email || '';
     }
   } catch {}
+}
+
+// ── Dropdown 開關 ──
+function calToggleDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('cal-user-dropdown');
+  const bd = document.getElementById('cal-dd-backdrop');
+  const isOpen = dd.style.display === 'block';
+  dd.style.display = isOpen ? 'none' : 'block';
+  bd.style.display = isOpen ? 'none' : 'block';
+}
+function calCloseDropdown() {
+  document.getElementById('cal-user-dropdown').style.display = 'none';
+  document.getElementById('cal-dd-backdrop').style.display = 'none';
+}
+
+// 登出
+function calDoLogout() {
+  calCloseDropdown();
+  fetch('/auth/logout', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => { if (d.portal_url) location.href = d.portal_url; else location.reload(); })
+    .catch(() => location.reload());
 }
 
 // ══════════════════════════════════════════
