@@ -754,6 +754,139 @@ def _delete_google_calendar_event(gcal_event_id: str):
         logging.warning("刪除 Google Calendar 事件失敗: %s", e)
 
 
+def _gcal_time_to_local(gcal_time: dict) -> str:
+    """把 Google Calendar 的 dateTime/date 轉成本系統格式（YYYY-MM-DDTHH:MM:SS+08:00）。"""
+    if not gcal_time:
+        return ""
+    if "dateTime" in gcal_time:
+        # 已有時區資訊，直接回傳前 19 碼加台灣時區
+        dt_str = gcal_time["dateTime"]
+        # 轉成 UTC+8
+        try:
+            from datetime import datetime, timezone, timedelta
+            tz_tw = timezone(timedelta(hours=8))
+            # Python 能解析帶 timezone 的 ISO 格式
+            dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+            dt_tw = dt.astimezone(tz_tw)
+            return dt_tw.strftime("%Y-%m-%dT%H:%M:%S")
+        except Exception:
+            return dt_str[:19]
+    elif "date" in gcal_time:
+        return gcal_time["date"] + "T00:00:00"
+    return ""
+
+
+@app.route("/api/sync-from-google", methods=["GET"])
+def api_sync_from_google():
+    """
+    從 Google Calendar 拉回行程變更，比對 Firestore 並更新。
+    只更新「本系統已推送過、有 gcal_event_id」的行程。
+    若 Google 日曆上的時間被改過，就更新 Firestore 的 start_dt / end_dt。
+    若 Google 日曆上的行程已被刪除，不自動刪除本系統（避免誤刪，只標記狀態）。
+    回傳 {"updated": N, "checked": M, "message": "..."}
+    """
+    email, err = _require_user()
+    if err:
+        return jsonify(err[0]), err[1]
+
+    service = _get_gcal_service()
+    if service is None:
+        return jsonify({"error": "Google Calendar 服務不可用，請確認 GOOGLE_CAL_CREDENTIALS_JSON 已設定"}), 503
+
+    col = _events_col()
+    if col is None:
+        return jsonify({"error": "Firestore 不可用"}), 503
+
+    # 查詢範圍：過去 30 天到未來 90 天
+    from datetime import datetime, timezone, timedelta
+    tz_tw = timezone(timedelta(hours=8))
+    now = datetime.now(tz_tw)
+    time_min = (now - timedelta(days=30)).isoformat()
+    time_max = (now + timedelta(days=90)).isoformat()
+
+    # 從 Google Calendar 拉取行程清單
+    try:
+        gcal_events = []
+        page_token = None
+        while True:
+            kwargs = dict(
+                calendarId=GOOGLE_CAL_ID,
+                timeMin=time_min,
+                timeMax=time_max,
+                singleEvents=True,
+                orderBy="startTime",
+                maxResults=500,
+            )
+            if page_token:
+                kwargs["pageToken"] = page_token
+            result = service.events().list(**kwargs).execute()
+            gcal_events.extend(result.get("items", []))
+            page_token = result.get("nextPageToken")
+            if not page_token:
+                break
+    except Exception as e:
+        logging.warning("拉取 Google Calendar 行程失敗: %s", e)
+        return jsonify({"error": f"Google Calendar 查詢失敗: {e}"}), 502
+
+    # 建立 gcal_event_id → gcal event 的對照表
+    gcal_map = {ev["id"]: ev for ev in gcal_events if "id" in ev}
+
+    # 查詢 Firestore 中有 gcal_event_id 的行程（當前用戶）
+    try:
+        if _is_admin(email):
+            docs = col.where("gcal_event_id", "!=", "").stream()
+        else:
+            docs = col.where("created_by", "==", email).where("gcal_event_id", "!=", "").stream()
+    except Exception as e:
+        logging.warning("Firestore 查詢失敗: %s", e)
+        return jsonify({"error": "Firestore 查詢失敗"}), 503
+
+    updated = 0
+    checked = 0
+
+    for doc in docs:
+        d = doc.to_dict()
+        gcal_id = d.get("gcal_event_id", "")
+        if not gcal_id:
+            continue
+        checked += 1
+
+        gcal_ev = gcal_map.get(gcal_id)
+        if not gcal_ev:
+            # Google 日曆上已刪除，不自動刪除本系統，只記錄
+            logging.info("行程 %s 在 Google Calendar 上已不存在（gcal_id=%s）", d.get("id"), gcal_id)
+            continue
+
+        # 比對時間是否有變更
+        gcal_start = _gcal_time_to_local(gcal_ev.get("start", {}))
+        gcal_end   = _gcal_time_to_local(gcal_ev.get("end", {}))
+        local_start = (d.get("start_dt") or "")[:19]
+        local_end   = (d.get("end_dt") or "")[:19]
+
+        # 比對標題是否有變更（去掉 emoji 前綴後比較）
+        gcal_summary = gcal_ev.get("summary", "")
+        # Google 標題格式："{emoji} {title}"，取空格後的部分
+        gcal_title_raw = gcal_summary.split(" ", 1)[-1] if " " in gcal_summary else gcal_summary
+
+        updates = {}
+        if gcal_start and gcal_start != local_start:
+            updates["start_dt"] = gcal_start
+        if gcal_end and gcal_end != local_end:
+            updates["end_dt"] = gcal_end
+
+        if updates:
+            updates["updated_at"] = datetime.now(tz_tw).isoformat()
+            try:
+                col.document(d["id"]).update(updates)
+                updated += 1
+                logging.info("已從 Google Calendar 更新行程 %s：%s", d.get("id"), updates)
+            except Exception as e:
+                logging.warning("更新 Firestore 行程 %s 失敗: %s", d.get("id"), e)
+
+    msg = f"已檢查 {checked} 筆行程，更新 {updated} 筆"
+    return jsonify({"ok": True, "checked": checked, "updated": updated, "message": msg})
+
+
 # ══════════════════════════════════════════
 #  前端頁面
 # ══════════════════════════════════════════

@@ -727,6 +727,11 @@ body {
       <span id="zoom-label" style="font-size:0.72rem;color:var(--text-muted);min-width:36px;text-align:center;">60px</span>
       <button onclick="adjustZoom(10)" style="background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:1rem;line-height:1;">＋</button>
     </div>
+    <!-- Google Calendar 同步按鈕（只在週視圖顯示） -->
+    <button id="btn-sync-google" onclick="syncFromGoogle()" title="從 Google 日曆拉回最新變更"
+      style="display:none;align-items:center;gap:5px;padding:4px 10px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:0.8rem;cursor:pointer;white-space:nowrap;">
+      🔄 同步 Google
+    </button>
     <button class="view-btn" id="view-month" onclick="switchView('month')">月</button>
     <button class="view-btn active" id="view-week" onclick="switchView('week')">週</button>
   </div>
@@ -959,6 +964,9 @@ function switchView(view) {
   // zoom 控制只在週視圖顯示
   const zoomCtrl = document.getElementById('zoom-ctrl');
   if (zoomCtrl) zoomCtrl.style.display = view === 'week' ? 'flex' : 'none';
+  // Google 同步按鈕只在週視圖顯示
+  const btnSync = document.getElementById('btn-sync-google');
+  if (btnSync) btnSync.style.display = view === 'week' ? 'flex' : 'none';
   if (view === 'week') {
     // 切到週時顯示當週（以今天為基準）
     currentWeekMonday = getMonday(new Date());
@@ -1260,6 +1268,52 @@ function scrollToNow() {
   const body = document.getElementById('week-body');
   if (body) body.scrollTop = Math.max(0, (m / 60) * hourPx - 200);
 }
+
+// ── Google Calendar 雙向同步 ──
+
+/**
+ * 從 Google Calendar 拉回變更並更新本系統。
+ * 點「🔄 同步 Google」按鈕時呼叫，每 10 分鐘也自動執行一次。
+ */
+async function syncFromGoogle() {
+  const btn = document.getElementById('btn-sync-google');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '同步中…';
+  }
+  try {
+    const res = await fetch('/api/sync-from-google');
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      const msg = data.updated > 0
+        ? `✅ ${data.message}`
+        : `✓ 已同步（無變更）`;
+      showToast(msg);
+      // 若有更新，重新載入行程
+      if (data.updated > 0) {
+        await loadWeekEvents();
+        renderWeek();
+      }
+    } else {
+      const errMsg = data.error || '同步失敗，請確認 Google Calendar 環境變數已設定';
+      showToast('⚠️ ' + errMsg, true);
+    }
+  } catch (e) {
+    showToast('⚠️ 同步失敗：' + e.message, true);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🔄 同步 Google';
+    }
+  }
+}
+
+// 每 10 分鐘自動從 Google Calendar 拉取一次（在週視圖時才執行）
+setInterval(() => {
+  if (currentView === 'week') {
+    syncFromGoogle();
+  }
+}, 10 * 60 * 1000);
 
 // ── 拖曳功能：移動行程 ──
 // 全域 flag：拖曳進行中，阻止 col click 觸發 openModal
