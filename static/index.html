@@ -833,11 +833,54 @@ body {
       <span id="zoom-label" style="font-size:0.72rem;color:var(--text-muted);min-width:36px;text-align:center;">60px</span>
       <button onclick="adjustZoom(10)" style="background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:1rem;line-height:1;">＋</button>
     </div>
-    <!-- Google Calendar 同步按鈕（只在週視圖顯示） -->
-    <button id="btn-sync-google" onclick="syncFromGoogle()" title="從 Google 日曆拉回最新變更"
-      style="display:none;align-items:center;gap:5px;padding:4px 10px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:0.8rem;cursor:pointer;white-space:nowrap;">
-      🔄 同步 Google
-    </button>
+    <!-- Google Calendar 同步按鈕 + 說明（只在週視圖顯示） -->
+    <div id="sync-google-wrap" style="display:none;align-items:center;gap:4px;">
+      <button id="btn-sync-google" onclick="syncFromGoogle()" title="從 Google 日曆拉回最新變更"
+        style="display:flex;align-items:center;gap:5px;padding:4px 10px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:0.8rem;cursor:pointer;white-space:nowrap;">
+        🔄 同步 Google
+      </button>
+      <button onclick="document.getElementById('gcal-setup-modal').style.display='flex'" title="如何設定 Google 日曆同步"
+        style="background:none;border:1px solid var(--border);border-radius:50%;width:22px;height:22px;font-size:0.75rem;color:var(--text-muted);cursor:pointer;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        ？
+      </button>
+    </div>
+
+    <!-- Google 日曆同步設定說明 Modal -->
+    <div id="gcal-setup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;max-width:480px;width:90%;padding:28px 24px;box-shadow:0 8px 32px rgba(0,0,0,.4);position:relative;">
+        <button onclick="document.getElementById('gcal-setup-modal').style.display='none'"
+          style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:1.3rem;color:var(--text-muted);cursor:pointer;line-height:1;">✕</button>
+        <h3 style="margin:0 0 16px;font-size:1rem;color:var(--text);display:flex;align-items:center;gap:8px;">
+          📅 如何與 Google 日曆同步
+        </h3>
+        <p style="margin:0 0 10px;font-size:0.85rem;color:var(--text-muted);line-height:1.6;">
+          業務行事曆使用「服務帳號」與 Google 日曆溝通。要讓你的 Google 日曆與這裡同步，需完成以下一次性設定：
+        </p>
+        <ol style="margin:0 0 16px;padding-left:20px;font-size:0.85rem;color:var(--text);line-height:2;">
+          <li>開啟 <a href="https://calendar.google.com" target="_blank" style="color:var(--accent);">Google 日曆</a></li>
+          <li>點選要同步的日曆旁的「⋮」→ <strong>設定與共用</strong></li>
+          <li>找到「<strong>與特定使用者或群組共用</strong>」→ 點「<strong>+ 新增使用者和群組</strong>」</li>
+          <li>輸入以下服務帳號 Email：</li>
+        </ol>
+        <div style="background:var(--bg-card,#1e2533);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px;">
+          <code id="service-account-email" style="font-size:0.8rem;color:var(--accent);word-break:break-all;flex:1;">
+            calendar-sync@gen-lang-client-0393195862.iam.gserviceaccount.com
+          </code>
+          <button onclick="navigator.clipboard.writeText('calendar-sync@gen-lang-client-0393195862.iam.gserviceaccount.com').then(()=>showToast('已複製！'))"
+            style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;white-space:nowrap;flex-shrink:0;">
+            複製
+          </button>
+        </div>
+        <ol start="5" style="margin:0 0 16px;padding-left:20px;font-size:0.85rem;color:var(--text);line-height:2;">
+          <li>權限選「<strong>查看所有活動詳情</strong>」（唯讀）<br>
+              或「<strong>進行變更及管理共用設定</strong>」（可新增/修改）</li>
+          <li>點「傳送」，完成！</li>
+        </ol>
+        <p style="margin:0;font-size:0.78rem;color:var(--text-muted);line-height:1.6;border-top:1px solid var(--border);padding-top:12px;">
+          設定完成後，在業務行事曆新增的行程會自動同步到 Google 日曆；點「🔄 同步 Google」可手動從 Google 日曆拉回最新變更。
+        </p>
+      </div>
+    </div>
     <button class="view-btn" id="view-month" onclick="switchView('month')">月</button>
     <button class="view-btn active" id="view-week" onclick="switchView('week')">週</button>
   </div>
@@ -1151,9 +1194,9 @@ function switchView(view) {
   // zoom 控制只在週視圖顯示
   const zoomCtrl = document.getElementById('zoom-ctrl');
   if (zoomCtrl) zoomCtrl.style.display = view === 'week' ? 'flex' : 'none';
-  // Google 同步按鈕只在週視圖顯示
-  const btnSync = document.getElementById('btn-sync-google');
-  if (btnSync) btnSync.style.display = view === 'week' ? 'flex' : 'none';
+  // Google 同步按鈕（含說明）只在週視圖顯示
+  const syncWrap = document.getElementById('sync-google-wrap');
+  if (syncWrap) syncWrap.style.display = view === 'week' ? 'flex' : 'none';
   if (view === 'week') {
     // 切到週時顯示當週（以今天為基準）
     currentWeekMonday = getMonday(new Date());
