@@ -92,6 +92,55 @@ def _is_admin(email):
     return email in ADMIN_EMAILS
 
 
+VALID_THEME_STYLES = ["navy", "forest", "amber", "minimal", "rose", "oled"]
+
+
+@app.route("/api/theme", methods=["GET"])
+def api_theme_get():
+    """取得目前全局外觀風格（跨工具共用 Firestore system_settings/theme）。"""
+    db = _get_db()
+    style, mode = "navy", None
+    if db:
+        try:
+            doc = db.collection("system_settings").document("theme").get()
+            if doc.exists:
+                d = doc.to_dict()
+                style = d.get("style", "navy")
+                mode = d.get("mode")
+        except Exception:
+            pass
+    return jsonify({"style": style, "mode": mode})
+
+
+@app.route("/api/theme", methods=["POST"])
+def api_theme_set():
+    """設定外觀風格（style 只有管理員能改，mode 任何登入者都能改）。"""
+    email = session.get("user_email", "")
+    if not email:
+        return jsonify({"error": "請先登入"}), 401
+    data = request.get_json(silent=True) or {}
+    update = {}
+    if "style" in data:
+        if not _is_admin(email):
+            return jsonify({"error": "無管理權限"}), 403
+        style = data["style"]
+        if style not in VALID_THEME_STYLES:
+            return jsonify({"error": "無效風格"}), 400
+        update["style"] = style
+    if "mode" in data:
+        mode = data["mode"]
+        if mode in ("dark", "light", "system"):
+            update["mode"] = mode
+    if update:
+        db = _get_db()
+        if db:
+            try:
+                db.collection("system_settings").document("theme").set(update, merge=True)
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+    return jsonify({"ok": True})
+
+
 def _require_user():
     """
     確認使用者已登入。

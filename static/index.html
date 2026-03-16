@@ -10,26 +10,30 @@
 /* ── 全域重設與 CSS 變數 ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── 行事曆特有顏色（所有主題共用） ── */
 :root {
-  --bg:        #0f172a;
-  --surface:   #1e293b;
-  --surface2:  #273549;
-  --border:    #334155;
-  --text:      #e2e8f0;
-  --text-muted:#94a3b8;
-  --primary:   #3b82f6;
-  --primary-h: #2563eb;
-  --commission:#f59e0b;  /* 簽委託 — 琥珀 */
-  --showing:   #10b981;  /* 帶看 — 綠 */
-  --contract:  #8b5cf6;  /* 簽買賣 — 紫 */
-  --danger:    #ef4444;
+  --commission:#f59e0b;
+  --showing:   #10b981;
+  --contract:  #8b5cf6;
   --radius:    10px;
 }
+/* ── 多主題 CSS 變數（與 Portal/AD/Buyer/Survey 完全一致） ── */
+[data-theme="navy-dark"]{--bg-p:#0f172a;--bg-s:#1e293b;--bg-t:#293548;--bg-h:#334155;--bd:#334155;--bdl:#475569;--tx:#f1f5f9;--txs:#94a3b8;--txm:#64748b;--ac:#3b82f6;--ach:#2563eb;--act:#fff;--acs:rgba(59,130,246,0.15);--dg:#f87171;--dgb:rgba(239,68,68,0.15);--ok:#34d399;--warn:#fbbf24;--tg:#1d4ed8;--tgt:#bfdbfe;--sh:0 8px 32px rgba(0,0,0,0.5);}
+[data-theme="navy-light"]{--bg-p:#f0f4f8;--bg-s:#fff;--bg-t:#f8fafc;--bg-h:#e2e8f0;--bd:#cbd5e1;--bdl:#e2e8f0;--tx:#0f172a;--txs:#475569;--txm:#94a3b8;--ac:#2563eb;--ach:#1d4ed8;--act:#fff;--acs:rgba(37,99,235,0.1);--dg:#dc2626;--dgb:rgba(220,38,38,0.08);--ok:#16a34a;--warn:#d97706;--tg:#dbeafe;--tgt:#1e40af;--sh:0 4px 16px rgba(0,0,0,0.1);}
+[data-theme="forest-dark"]{--bg-p:#0a1a12;--bg-s:#132218;--bg-t:#1a3024;--bg-h:#1e3d2a;--bd:#1e3d2a;--bdl:#2d5a3e;--tx:#ecfdf5;--txs:#86efac;--txm:#4ade80;--ac:#22c55e;--ach:#16a34a;--act:#fff;--acs:rgba(34,197,94,0.15);--dg:#f87171;--dgb:rgba(239,68,68,0.15);--ok:#34d399;--warn:#fbbf24;--tg:#14532d;--tgt:#86efac;--sh:0 8px 32px rgba(0,0,0,0.6);}
+[data-theme="forest-light"]{--bg-p:#f0fdf4;--bg-s:#fff;--bg-t:#f7fef9;--bg-h:#dcfce7;--bd:#bbf7d0;--bdl:#dcfce7;--tx:#14532d;--txs:#166534;--txm:#4ade80;--ac:#16a34a;--ach:#15803d;--act:#fff;--acs:rgba(22,163,74,0.1);--dg:#dc2626;--dgb:rgba(220,38,38,0.08);--ok:#16a34a;--warn:#d97706;--tg:#dcfce7;--tgt:#14532d;--sh:0 4px 16px rgba(0,80,40,0.1);}
+[data-theme="amber-dark"]{--bg-p:#1a1208;--bg-s:#261a0c;--bg-t:#332210;--bg-h:#3d2b14;--bd:#3d2b14;--bdl:#5c3d1e;--tx:#fef3c7;--txs:#fcd34d;--txm:#d97706;--ac:#f59e0b;--ach:#d97706;--act:#1a1208;--acs:rgba(245,158,11,0.15);--dg:#f87171;--dgb:rgba(239,68,68,0.15);--ok:#34d399;--warn:#fbbf24;--tg:#78350f;--tgt:#fde68a;--sh:0 8px 32px rgba(0,0,0,0.6);}
+[data-theme="amber-light"]{--bg-p:#fffbeb;--bg-s:#fff;--bg-t:#fefce8;--bg-h:#fef3c7;--bd:#fde68a;--bdl:#fef3c7;--tx:#451a03;--txs:#92400e;--txm:#b45309;--ac:#d97706;--ach:#b45309;--act:#fff;--acs:rgba(217,119,6,0.1);--dg:#dc2626;--dgb:rgba(220,38,38,0.08);--ok:#16a34a;--warn:#d97706;--tg:#fef3c7;--tgt:#78350f;--sh:0 4px 16px rgba(180,100,0,0.1);}
+[data-theme="minimal-light"]{--bg-p:#f9fafb;--bg-s:#fff;--bg-t:#f3f4f6;--bg-h:#f3f4f6;--bd:#e5e7eb;--bdl:#f3f4f6;--tx:#111827;--txs:#6b7280;--txm:#9ca3af;--ac:#4f46e5;--ach:#4338ca;--act:#fff;--acs:rgba(79,70,229,0.08);--dg:#ef4444;--dgb:rgba(239,68,68,0.08);--ok:#10b981;--warn:#f59e0b;--tg:#ede9fe;--tgt:#4c1d95;--sh:0 1px 8px rgba(0,0,0,0.08);}
+[data-theme="minimal-dark"]{--bg-p:#18181b;--bg-s:#27272a;--bg-t:#3f3f46;--bg-h:#3f3f46;--bd:#3f3f46;--bdl:#52525b;--tx:#fafafa;--txs:#a1a1aa;--txm:#71717a;--ac:#6366f1;--ach:#4f46e5;--act:#fff;--acs:rgba(99,102,241,0.15);--dg:#f87171;--dgb:rgba(239,68,68,0.15);--ok:#34d399;--warn:#fbbf24;--tg:#312e81;--tgt:#c7d2fe;--sh:0 8px 32px rgba(0,0,0,0.5);}
+[data-theme="rose-light"]{--bg-p:#fff1f2;--bg-s:#fff;--bg-t:#fff1f2;--bg-h:#ffe4e6;--bd:#fecdd3;--bdl:#ffe4e6;--tx:#4c0519;--txs:#9f1239;--txm:#e11d48;--ac:#e11d48;--ach:#be123c;--act:#fff;--acs:rgba(225,29,72,0.08);--dg:#be123c;--dgb:rgba(190,18,60,0.08);--ok:#16a34a;--warn:#d97706;--tg:#ffe4e6;--tgt:#9f1239;--sh:0 4px 16px rgba(200,0,50,0.1);}
+[data-theme="rose-dark"]{--bg-p:#1a0810;--bg-s:#2a0f1c;--bg-t:#3a1528;--bg-h:#4a1a32;--bd:#4a1a32;--bdl:#6b2545;--tx:#fff1f2;--txs:#fda4af;--txm:#fb7185;--ac:#fb7185;--ach:#f43f5e;--act:#fff;--acs:rgba(251,113,133,0.15);--dg:#f87171;--dgb:rgba(239,68,68,0.15);--ok:#34d399;--warn:#fbbf24;--tg:#881337;--tgt:#fda4af;--sh:0 8px 32px rgba(0,0,0,0.6);}
+[data-theme="oled-dark"]{--bg-p:#000;--bg-s:#0a0a0a;--bg-t:#141414;--bg-h:#1f1f1f;--bd:#1f1f1f;--bdl:#2d2d2d;--tx:#fff;--txs:#a3a3a3;--txm:#525252;--ac:#fff;--ach:#e5e5e5;--act:#000;--acs:rgba(255,255,255,0.08);--dg:#f87171;--dgb:rgba(239,68,68,0.15);--ok:#34d399;--warn:#fbbf24;--tg:#1f1f1f;--tgt:#a3a3a3;--sh:0 8px 32px rgba(0,0,0,0.8);}
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg-p);
+  color: var(--tx);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -41,36 +45,36 @@ body {
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--bg-s);
+  border-bottom: 1px solid var(--bd);
   flex-shrink: 0;
 }
 #topbar h1 { font-size: 1.1rem; font-weight: 700; flex: 1; }
 #btn-portal {
   padding: 6px 14px;
   border-radius: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--bd);
   background: transparent;
-  color: var(--text-muted);
+  color: var(--txs);
   cursor: pointer;
   font-size: 0.85rem;
   transition: background .15s;
 }
-#btn-portal:hover { background: var(--surface2); }
+#btn-portal:hover { background: var(--bg-t); }
 #btn-add-event {
   display: flex; align-items: center; gap: 6px;
   padding: 8px 16px;
   border-radius: 8px;
   border: none;
-  background: var(--primary);
+  background: var(--ac);
   color: #fff;
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 600;
   transition: background .15s;
 }
-#btn-add-event:hover { background: var(--primary-h); }
-#user-info { font-size: 0.82rem; color: var(--text-muted); }
+#btn-add-event:hover { background: var(--ach); }
+#user-info { font-size: 0.82rem; color: var(--txs); }
 
 /* ── 導航列（月/週共用） ── */
 #cal-nav {
@@ -79,7 +83,7 @@ body {
   gap: 12px;
   padding: 14px 20px 10px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--bd);
 }
 
 /* ── 月檢視主體 ── */
@@ -94,31 +98,31 @@ body {
 .btn-nav {
   padding: 5px 12px;
   border-radius: 6px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--bd);
   background: transparent;
-  color: var(--text);
+  color: var(--tx);
   cursor: pointer;
   font-size: 1rem;
   transition: background .15s;
 }
-.btn-nav:hover { background: var(--surface2); }
+.btn-nav:hover { background: var(--bg-t); }
 #btn-today {
   padding: 5px 14px;
   border-radius: 6px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--bd);
   background: transparent;
-  color: var(--text);
+  color: var(--tx);
   cursor: pointer;
   font-size: 0.85rem;
   transition: background .15s;
 }
-#btn-today:hover { background: var(--surface2); }
+#btn-today:hover { background: var(--bg-t); }
 
 /* 星期標題列 */
 #cal-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--bd);
   padding: 0 20px;
   flex-shrink: 0;
 }
@@ -126,7 +130,7 @@ body {
   text-align: center;
   padding: 6px 0;
   font-size: 0.78rem;
-  color: var(--text-muted);
+  color: var(--txs);
   font-weight: 600;
   letter-spacing: .05em;
 }
@@ -142,19 +146,19 @@ body {
   overflow-y: auto;
 }
 .cal-day {
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--bd);
+  border-bottom: 1px solid var(--bd);
   padding: 6px 4px 4px;
   min-height: 100px;
   cursor: pointer;
   transition: background .1s;
   position: relative;
 }
-.cal-day:hover { background: var(--surface2); }
-.cal-day.other-month .day-num { color: var(--text-muted); opacity: .5; }
+.cal-day:hover { background: var(--bg-t); }
+.cal-day.other-month .day-num { color: var(--txs); opacity: .5; }
 .cal-day.today { background: #1e3557; }
 .cal-day.today .day-num {
-  background: var(--primary);
+  background: var(--ac);
   color: #fff;
   border-radius: 50%;
   width: 26px;
@@ -192,7 +196,7 @@ body {
 .chip-commission { background: rgba(245,158,11,.25); color: #fbbf24; border-left: 3px solid var(--commission); }
 .chip-showing    { background: rgba(16,185,129,.2); color: #34d399; border-left: 3px solid var(--showing); }
 .chip-contract   { background: rgba(139,92,246,.25); color: #a78bfa; border-left: 3px solid var(--contract); }
-.more-events { font-size: 0.7rem; color: var(--text-muted); padding: 1px 4px; }
+.more-events { font-size: 0.7rem; color: var(--txs); padding: 1px 4px; }
 
 /* ── 行程列表側欄（點日期後顯示） ── */
 #side-panel {
@@ -200,8 +204,8 @@ body {
   top: 0; right: -420px;
   width: 400px;
   height: 100%;
-  background: var(--surface);
-  border-left: 1px solid var(--border);
+  background: var(--bg-s);
+  border-left: 1px solid var(--bd);
   display: flex;
   flex-direction: column;
   transition: right .25s ease;
@@ -214,19 +218,19 @@ body {
   align-items: center;
   gap: 10px;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--bd);
   flex-shrink: 0;
 }
 #side-title { font-size: 1rem; font-weight: 700; flex: 1; }
 #side-close {
-  background: none; border: none; color: var(--text-muted);
+  background: none; border: none; color: var(--txs);
   font-size: 1.4rem; cursor: pointer; line-height: 1;
 }
-#side-close:hover { color: var(--text); }
+#side-close:hover { color: var(--tx); }
 #side-events-list { flex: 1; overflow-y: auto; padding: 16px; }
 .side-event-card {
-  background: var(--surface2);
-  border: 1px solid var(--border);
+  background: var(--bg-t);
+  border: 1px solid var(--bd);
   border-radius: var(--radius);
   padding: 12px 14px;
   margin-bottom: 10px;
@@ -234,7 +238,7 @@ body {
   transition: border-color .15s;
   border-left-width: 4px;
 }
-.side-event-card:hover { border-color: var(--primary); }
+.side-event-card:hover { border-color: var(--ac); }
 .side-event-card.commission { border-left-color: var(--commission); }
 .side-event-card.showing    { border-left-color: var(--showing); }
 .side-event-card.contract   { border-left-color: var(--contract); }
@@ -243,15 +247,15 @@ body {
 .sev-type.showing    { color: var(--showing); }
 .sev-type.contract   { color: var(--contract); }
 .sev-title { font-weight: 600; margin-bottom: 6px; }
-.sev-meta { font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; }
+.sev-meta { font-size: 0.8rem; color: var(--txs); line-height: 1.6; }
 .sev-actions { margin-top: 8px; display: flex; gap: 8px; }
 .btn-sm {
   padding: 4px 10px; border-radius: 6px; font-size: 0.78rem;
-  border: 1px solid var(--border); background: transparent;
-  color: var(--text-muted); cursor: pointer; transition: all .15s;
+  border: 1px solid var(--bd); background: transparent;
+  color: var(--txs); cursor: pointer; transition: all .15s;
 }
-.btn-sm:hover { background: var(--surface); color: var(--text); }
-.btn-sm.danger:hover { border-color: var(--danger); color: var(--danger); }
+.btn-sm:hover { background: var(--bg-s); color: var(--tx); }
+.btn-sm.danger:hover { border-color: var(--dg); color: var(--dg); }
 
 /* ── 新增/編輯行程 Modal ── */
 #modal-overlay {
@@ -264,8 +268,8 @@ body {
 }
 #modal-overlay.open { display: flex; }
 #modal {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--bg-s);
+  border: 1px solid var(--bd);
   border-radius: 14px;
   width: min(560px, 96vw);
   max-height: 90vh;
@@ -279,19 +283,19 @@ body {
   align-items: center;
   gap: 10px;
   padding: 18px 20px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--bd);
   flex-shrink: 0;
 }
 #modal-title { font-size: 1.05rem; font-weight: 700; flex: 1; }
 #modal-close {
-  background: none; border: none; color: var(--text-muted);
+  background: none; border: none; color: var(--txs);
   font-size: 1.4rem; cursor: pointer; line-height: 1;
 }
-#modal-close:hover { color: var(--text); }
+#modal-close:hover { color: var(--tx); }
 #modal-body { flex: 1; overflow-y: auto; padding: 20px; }
 #modal-footer {
   padding: 14px 20px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--bd);
   display: flex;
   gap: 10px;
   justify-content: flex-end;
@@ -302,11 +306,11 @@ body {
 #type-selector { display: flex; gap: 10px; margin-bottom: 20px; }
 .type-btn {
   flex: 1; padding: 10px 6px; border-radius: 8px;
-  border: 2px solid var(--border); background: transparent;
-  color: var(--text-muted); cursor: pointer; text-align: center;
+  border: 2px solid var(--bd); background: transparent;
+  color: var(--txs); cursor: pointer; text-align: center;
   font-size: 0.82rem; font-weight: 600; transition: all .15s;
 }
-.type-btn:hover { border-color: var(--text-muted); color: var(--text); }
+.type-btn:hover { border-color: var(--txs); color: var(--tx); }
 .type-btn.active-commission { border-color: var(--commission); color: var(--commission); background: rgba(245,158,11,.1); }
 .type-btn.active-showing    { border-color: var(--showing); color: var(--showing); background: rgba(16,185,129,.1); }
 .type-btn.active-contract   { border-color: var(--contract); color: var(--contract); background: rgba(139,92,246,.1); }
@@ -315,21 +319,21 @@ body {
 .form-group { margin-bottom: 14px; }
 .form-label {
   display: block; font-size: 0.82rem; font-weight: 600;
-  color: var(--text-muted); margin-bottom: 6px;
+  color: var(--txs); margin-bottom: 6px;
 }
-.form-label .required { color: var(--danger); margin-left: 2px; }
+.form-label .required { color: var(--dg); margin-left: 2px; }
 .form-input, .form-select, .form-textarea {
   width: 100%;
   padding: 9px 12px;
   border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--bd);
+  background: var(--bg-p);
+  color: var(--tx);
   font-size: 0.9rem;
   outline: none;
   transition: border-color .15s;
 }
-.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--ac); }
 .form-textarea { resize: vertical; min-height: 70px; }
 .form-row { display: flex; gap: 12px; }
 .form-row > .form-group { flex: 1; }
@@ -339,8 +343,8 @@ body {
 .autocomplete-list {
   /* position:fixed 讓下拉清單不受父層 overflow:hidden/auto 裁切 */
   position: fixed;
-  background: var(--surface2);
-  border: 1px solid var(--border);
+  background: var(--bg-t);
+  border: 1px solid var(--bd);
   border-radius: 8px;
   z-index: 9999;
   max-height: 200px;
@@ -351,14 +355,14 @@ body {
 .autocomplete-list.open { display: block; }
 .ac-item {
   padding: 9px 12px; cursor: pointer; font-size: 0.88rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--bd);
   transition: background .1s;
 }
 .ac-item:last-child { border-bottom: none; }
-.ac-item:hover, .ac-item.highlighted { background: var(--surface); }
-.ac-item .ac-sub { font-size: 0.76rem; color: var(--text-muted); margin-top: 1px; }
+.ac-item:hover, .ac-item.highlighted { background: var(--bg-s); }
+.ac-item .ac-sub { font-size: 0.76rem; color: var(--txs); margin-top: 1px; }
 .ac-hint {
-  padding: 9px 12px; font-size: 0.8rem; color: var(--text-muted);
+  padding: 9px 12px; font-size: 0.8rem; color: var(--txs);
   display: flex; align-items: center; gap: 6px;
 }
 
@@ -369,17 +373,17 @@ body {
 /* 按鈕 */
 .btn-primary {
   padding: 9px 20px; border-radius: 8px; border: none;
-  background: var(--primary); color: #fff; font-weight: 600;
+  background: var(--ac); color: #fff; font-weight: 600;
   font-size: 0.9rem; cursor: pointer; transition: background .15s;
 }
-.btn-primary:hover { background: var(--primary-h); }
+.btn-primary:hover { background: var(--ach); }
 .btn-secondary {
   padding: 9px 20px; border-radius: 8px;
-  border: 1px solid var(--border); background: transparent;
-  color: var(--text-muted); font-size: 0.9rem;
+  border: 1px solid var(--bd); background: transparent;
+  color: var(--txs); font-size: 0.9rem;
   cursor: pointer; transition: all .15s;
 }
-.btn-secondary:hover { background: var(--surface2); color: var(--text); }
+.btn-secondary:hover { background: var(--bg-t); color: var(--tx); }
 
 /* 提示訊息 */
 #toast {
@@ -397,8 +401,8 @@ body {
   display: flex; gap: 16px; align-items: center;
   padding: 8px 20px;
   font-size: 0.78rem;
-  border-bottom: 1px solid var(--border);
-  color: var(--text-muted);
+  border-bottom: 1px solid var(--bd);
+  color: var(--txs);
   flex-shrink: 0;
 }
 .legend-dot {
@@ -409,8 +413,8 @@ body {
 #view-toggle {
   display: flex;
   gap: 4px;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--bg-p);
+  border: 1px solid var(--bd);
   border-radius: 8px;
   padding: 3px;
 }
@@ -419,17 +423,17 @@ body {
   border-radius: 6px;
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--txs);
   cursor: pointer;
   font-size: 0.82rem;
   font-weight: 600;
   transition: all .15s;
 }
 .view-btn.active {
-  background: var(--primary);
+  background: var(--ac);
   color: #fff;
 }
-.view-btn:not(.active):hover { background: var(--surface2); color: var(--text); }
+.view-btn:not(.active):hover { background: var(--bg-t); color: var(--tx); }
 
 /* ── 週檢視容器 ── */
 #week-container {
@@ -446,7 +450,7 @@ body {
   display: grid;
   /* 第一欄是時間軸寬度，後面 7 欄是每天 */
   grid-template-columns: 52px repeat(7, 1fr);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--bd);
   flex-shrink: 0;
   padding: 0 8px 0 0;
 }
@@ -454,9 +458,9 @@ body {
 .week-header-day {
   text-align: center;
   padding: 8px 4px 6px;
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--bd);
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: var(--txs);
   font-weight: 600;
 }
 .week-header-day .wh-weekday {
@@ -468,12 +472,12 @@ body {
 .week-header-day .wh-date {
   font-size: 1.4rem;
   font-weight: 700;
-  color: var(--text);
+  color: var(--tx);
   display: block;
   line-height: 1.2;
 }
 .week-header-day.today-col .wh-date {
-  color: var(--primary);
+  color: var(--ac);
 }
 .week-header-day.today-col {
   background: rgba(59,130,246,.06);
@@ -505,14 +509,14 @@ body {
   padding-top: 2px;
   padding-right: 6px;
   font-size: 0.68rem;
-  color: var(--text-muted);
+  color: var(--txs);
   justify-content: flex-end;
   border-top: 1px solid transparent;  /* 佔位，不畫線 */
 }
 
 /* 每天的格子欄 */
 .week-day-col {
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--bd);
   position: relative;
   min-height: 1440px;   /* 24 小時 × 60px */
 }
@@ -522,7 +526,7 @@ body {
 .week-hour-line {
   position: absolute;
   left: 0; right: 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--bd);
   opacity: .5;
 }
 .week-hour-line.half {
@@ -606,8 +610,8 @@ body {
   position: fixed;
   left: 0; top: 0; bottom: 0;
   width: 200px;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  background: var(--bg-s);
+  border-right: 1px solid var(--bd);
   display: flex;
   flex-direction: column;
   z-index: 200;
@@ -617,7 +621,7 @@ body {
   display: flex; align-items: center; gap: 8px;
   padding: 0 16px 14px;
   font-size: 0.9rem; font-weight: 700;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--bd);
   margin-bottom: 8px;
 }
 #app-sidebar nav { flex: 1; }
@@ -625,19 +629,19 @@ body {
   display: block;
   padding: 8px 16px;
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: var(--txs);
   text-decoration: none;
   border-radius: 6px;
   margin: 2px 8px;
   transition: background .15s, color .15s;
 }
-#app-sidebar nav a:hover { background: var(--surface2); color: var(--text); }
-#app-sidebar nav a.active { background: rgba(59,130,246,.15); color: var(--primary); font-weight: 600; }
+#app-sidebar nav a:hover { background: var(--bg-t); color: var(--tx); }
+#app-sidebar nav a.active { background: rgba(59,130,246,.15); color: var(--ac); font-weight: 600; }
 
 /* ── Sidebar 使用者區塊 ── */
 .sb-user {
   padding: 10px 12px 4px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--bd);
   margin-top: 8px;
 }
 .sb-user button {
@@ -648,12 +652,12 @@ body {
   transition: background .15s;
   text-align: left;
 }
-.sb-user button:hover { background: var(--surface2); }
+.sb-user button:hover { background: var(--bg-t); }
 
 /* ── 頭像 ── */
 .av-wrap {
   border-radius: 50%; overflow: hidden;
-  background: var(--primary);
+  background: var(--ac);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -665,7 +669,7 @@ body {
   display: inline-block; padding: 1px 7px;
   border-radius: 99px; font-size: 0.72rem; font-weight: 600;
 }
-.points-pill.points { background: rgba(59,130,246,.12); color: var(--primary); }
+.points-pill.points { background: rgba(59,130,246,.12); color: var(--ac); }
 .points-pill.admin  { background: rgba(139,92,246,.2);  color: rgb(196,167,255); }
 .points-pill.sub    { background: rgba(34,197,94,.2);   color: rgb(134,239,172); }
 .dd-item { display: flex; align-items: center; gap: 10px; }
@@ -674,8 +678,8 @@ body {
 #cal-user-dropdown {
   position: fixed; bottom: 80px; left: 12px;
   width: 220px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--bg-s);
+  border: 1px solid var(--bd);
   border-radius: 14px;
   box-shadow: 0 8px 32px rgba(0,0,0,.18);
   z-index: 600;
@@ -684,25 +688,25 @@ body {
 }
 #cal-user-dropdown .dd-header {
   padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--bd);
 }
 #cal-user-dropdown .dd-header p {
   font-size: 0.88rem; font-weight: 600;
-  color: var(--text); margin: 0 0 4px;
+  color: var(--tx); margin: 0 0 4px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 #cal-user-dropdown a, #cal-user-dropdown button.dd-item {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 16px;
-  font-size: 0.85rem; color: var(--text-muted);
+  font-size: 0.85rem; color: var(--txs);
   text-decoration: none; cursor: pointer;
   transition: background .15s, color .15s;
   width: 100%; border: none; background: none; text-align: left;
 }
 #cal-user-dropdown a:hover, #cal-user-dropdown button.dd-item:hover {
-  background: var(--surface2); color: var(--text);
+  background: var(--bg-t); color: var(--tx);
 }
-#cal-user-dropdown .dd-divider { height: 1px; background: var(--border); margin: 4px 0; }
+#cal-user-dropdown .dd-divider { height: 1px; background: var(--bd); margin: 4px 0; }
 #cal-user-dropdown .dd-danger { color: #ef4444; }
 #cal-user-dropdown .dd-danger:hover { background: rgba(239,68,68,.08); color: #dc2626; }
 
@@ -732,8 +736,8 @@ body {
   position: fixed;
   bottom: 0; left: 0; right: 0;
   z-index: 250;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  background: var(--bg-s);
+  border-top: 1px solid var(--bd);
   padding-bottom: env(safe-area-inset-bottom);
 }
 @media (max-width: 767px) { #cal-tab-bar { display: flex; } }
@@ -741,17 +745,84 @@ body {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; gap: 2px;
   padding: 8px 4px;
-  color: var(--text-muted);
+  color: var(--txs);
   font-size: 0.65rem;
   text-decoration: none;
   border-top: 2px solid transparent;
   transition: color .15s;
 }
-.cal-tb-item:hover { color: var(--text); }
-.cal-tb-active { color: var(--primary) !important; border-top-color: var(--primary) !important; }
+.cal-tb-item:hover { color: var(--tx); }
+.cal-tb-active { color: var(--ac) !important; border-top-color: var(--ac) !important; }
+/* ── 外觀設定面板 ── */
+#theme-panel{position:fixed;top:0;right:0;bottom:0;width:288px;background:var(--bg-s);border-left:1px solid var(--bd);z-index:800;padding:20px;overflow-y:auto;box-shadow:var(--sh);transition:background 0.3s,border-color 0.3s;}
+.tp-style-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.tp-style-card{border:2px solid var(--bd);border-radius:10px;padding:8px;cursor:pointer;transition:border-color 0.2s,transform 0.15s;position:relative;overflow:hidden;}
+.tp-style-card:hover{transform:scale(1.02);}
+.tp-style-card.selected{border-color:var(--ac);}
+.tp-style-card .preview{height:44px;border-radius:6px;margin-bottom:6px;display:flex;overflow:hidden;}
+.tp-style-card .preview .sb-strip{width:28%;height:100%;}
+.tp-style-card .preview .ct-strip{flex:1;height:100%;padding:3px;display:flex;flex-direction:column;gap:2px;}
+.tp-style-card .preview .ln{border-radius:2px;height:5px;}
+.tp-check{position:absolute;top:5px;right:5px;width:16px;height:16px;border-radius:50%;background:var(--ac);color:var(--act);font-size:9px;display:none;align-items:center;justify-content:center;}
+.tp-style-card.selected .tp-check{display:flex;}
+.tp-style-name{font-size:0.72rem;font-weight:600;color:var(--tx);margin-bottom:1px;}
+.tp-style-desc{font-size:0.62rem;color:var(--txm);}
+.tp-mode-row{display:flex;gap:5px;margin-bottom:14px;}
+.tp-mode-btn{flex:1;padding:7px 4px;border-radius:7px;border:1px solid var(--bd);background:none;color:var(--txs);font-size:0.74rem;cursor:pointer;transition:all 0.15s;}
+.tp-mode-btn.active{background:var(--ac);color:var(--act);border-color:var(--ac);}
+.tp-section{font-size:0.68rem;font-weight:600;color:var(--txm);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;margin-top:14px;}
 </style>
 </head>
-<body>
+<body data-theme="navy-dark">
+
+<!-- ── 外觀設定面板 ── -->
+<div id="theme-panel" style="display:none;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+    <div style="font-size:0.95rem;font-weight:700;color:var(--tx);">🎨 外觀設定</div>
+    <button onclick="document.getElementById('theme-panel').style.display='none'" style="background:none;border:none;color:var(--txm);cursor:pointer;font-size:1.2rem;line-height:1;">✕</button>
+  </div>
+  <div style="font-size:0.75rem;color:var(--txm);margin-bottom:14px;">管理員設定的風格，所有成員同步套用</div>
+  <div class="tp-section">明暗模式（個人）</div>
+  <div class="tp-mode-row" id="tp-mode-row">
+    <button class="tp-mode-btn" id="tp-btn-dark" onclick="window._tpSetMode('dark')">🌙 深色</button>
+    <button class="tp-mode-btn" id="tp-btn-light" onclick="window._tpSetMode('light')">☀️ 淺色</button>
+    <button class="tp-mode-btn" id="tp-btn-system" onclick="window._tpSetMode('system')">🖥️ 系統</button>
+  </div>
+  <div id="tp-admin-only" style="display:none;">
+    <div class="tp-section">色系風格（後台統一）</div>
+    <div class="tp-style-grid" id="tp-style-grid">
+      <div class="tp-style-card" id="tp-card-navy" onclick="window._tpAdminSetStyle('navy')">
+        <div class="preview"><div class="sb-strip" style="background:#1e293b;"></div><div class="ct-strip" style="background:#0f172a;"><div class="ln" style="background:#334155;width:80%;"></div><div class="ln" style="background:#3b82f6;width:50%;"></div><div class="ln" style="background:#334155;width:65%;"></div></div></div>
+        <div class="tp-check">✓</div><div class="tp-style-name">🌙 深夜藍</div><div class="tp-style-desc">穩重專業</div>
+      </div>
+      <div class="tp-style-card" id="tp-card-forest" onclick="window._tpAdminSetStyle('forest')">
+        <div class="preview"><div class="sb-strip" style="background:#132218;"></div><div class="ct-strip" style="background:#0a1a12;"><div class="ln" style="background:#1e3d2a;width:80%;"></div><div class="ln" style="background:#22c55e;width:50%;"></div><div class="ln" style="background:#1e3d2a;width:65%;"></div></div></div>
+        <div class="tp-check">✓</div><div class="tp-style-name">🌿 森林綠</div><div class="tp-style-desc">清新活力</div>
+      </div>
+      <div class="tp-style-card" id="tp-card-amber" onclick="window._tpAdminSetStyle('amber')">
+        <div class="preview"><div class="sb-strip" style="background:#261a0c;"></div><div class="ct-strip" style="background:#1a1208;"><div class="ln" style="background:#3d2b14;width:80%;"></div><div class="ln" style="background:#f59e0b;width:50%;"></div><div class="ln" style="background:#3d2b14;width:65%;"></div></div></div>
+        <div class="tp-check">✓</div><div class="tp-style-name">🌅 暖棕商務</div><div class="tp-style-desc">低調奢華</div>
+      </div>
+      <div class="tp-style-card" id="tp-card-minimal" onclick="window._tpAdminSetStyle('minimal')">
+        <div class="preview"><div class="sb-strip" style="background:#fff;border-right:1px solid #e5e7eb;"></div><div class="ct-strip" style="background:#f9fafb;"><div class="ln" style="background:#e5e7eb;width:80%;"></div><div class="ln" style="background:#4f46e5;width:50%;"></div><div class="ln" style="background:#e5e7eb;width:65%;"></div></div></div>
+        <div class="tp-check">✓</div><div class="tp-style-name">⬜ 純白簡約</div><div class="tp-style-desc">清晰易讀</div>
+      </div>
+      <div class="tp-style-card" id="tp-card-rose" onclick="window._tpAdminSetStyle('rose')">
+        <div class="preview"><div class="sb-strip" style="background:#2a0f1c;"></div><div class="ct-strip" style="background:#1a0810;"><div class="ln" style="background:#4a1a32;width:80%;"></div><div class="ln" style="background:#fb7185;width:50%;"></div><div class="ln" style="background:#4a1a32;width:65%;"></div></div></div>
+        <div class="tp-check">✓</div><div class="tp-style-name">🌸 玫瑰粉</div><div class="tp-style-desc">優雅浪漫</div>
+      </div>
+      <div class="tp-style-card" id="tp-card-oled" onclick="window._tpAdminSetStyle('oled')">
+        <div class="preview"><div class="sb-strip" style="background:#0a0a0a;"></div><div class="ct-strip" style="background:#000;"><div class="ln" style="background:#1f1f1f;width:80%;"></div><div class="ln" style="background:#fff;width:50%;"></div><div class="ln" style="background:#1f1f1f;width:65%;"></div></div></div>
+        <div class="tp-check">✓</div><div class="tp-style-name">🖤 OLED 黑</div><div class="tp-style-desc">省電護眼</div>
+      </div>
+    </div>
+    <button onclick="window._tpSaveStyle()" style="width:100%;padding:9px;border-radius:8px;background:var(--ac);color:var(--act);border:none;cursor:pointer;font-size:0.85rem;font-weight:600;">💾 套用到所有工具</button>
+    <div id="tp-save-msg" style="text-align:center;font-size:0.75rem;color:var(--ok);margin-top:6px;display:none;">✓ 已儲存！所有工具同步套用</div>
+  </div>
+  <div style="margin-top:14px;padding:10px;border-radius:8px;background:var(--bg-t);border:1px solid var(--bd);font-size:0.7rem;color:var(--txm);line-height:1.6;">
+    💡 風格由管理員統一設定，明暗模式依個人裝置偏好儲存。
+  </div>
+</div>
 
 <!-- ── 桌機左側 Sidebar ── -->
 <aside id="app-sidebar">
@@ -760,12 +831,12 @@ body {
     <span>業務行事曆</span>
   </div>
   <nav>
-    <a href="javascript:void(0)" id="sb-portal-home" class="hidden">🏠 工具首頁</a>
-    <a href="javascript:void(0)" id="sb-ad" class="hidden">📝 廣告文案</a>
-    <a href="javascript:void(0)" id="sb-library" class="hidden">📁 物件庫</a>
-    <a href="javascript:void(0)" id="sb-buyer" class="hidden">👥 買方管理</a>
-    <a href="javascript:void(0)" id="sb-survey" class="hidden">📍 周邊調查</a>
-    <a href="#" class="active">📅 業務行事曆</a>
+    <a href="javascript:void(0)" id="sb-portal-home" class="hidden"><img src="/static/tool-reels.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:8px;"> 工具首頁</a>
+    <a href="javascript:void(0)" id="sb-ad" class="hidden"><img src="/static/tool-ad.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:8px;"> 廣告文案</a>
+    <a href="javascript:void(0)" id="sb-library" class="hidden"><img src="/static/tool-library.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:8px;"> 物件庫</a>
+    <a href="javascript:void(0)" id="sb-buyer" class="hidden"><img src="/static/tool-buyer.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:8px;"> 買方管理</a>
+    <a href="javascript:void(0)" id="sb-survey" class="hidden"><img src="/static/tool-survey.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:8px;"> 周邊調查</a>
+    <a href="#" class="active"><img src="/static/tool-calendar.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:8px;"> 業務行事曆</a>
   </nav>
   <!-- 使用者頭像區（點擊展開 Dropdown） -->
   <div class="sb-user">
@@ -774,10 +845,10 @@ body {
         <div class="av-fb">?</div>
       </div>
       <div style="min-width:0;flex:1;">
-        <div id="sb-name" style="font-size:0.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <div id="sb-name" style="font-size:0.82rem;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
         <span id="sb-badge" class="points-pill points" style="margin-top:2px;">— 點</span>
       </div>
-      <svg style="width:16px;height:16px;color:var(--text-muted);flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      <svg style="width:16px;height:16px;color:var(--txs);flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
     </button>
   </div>
 </aside>
@@ -792,7 +863,7 @@ body {
     <a id="cal-dd-plans"   href="javascript:void(0)" class="dd-item hidden">⬆️ 升級方案</a>
     <a id="cal-dd-account" href="javascript:void(0)" class="dd-item hidden">👤 帳號管理</a>
     <a id="cal-dd-admin"   href="javascript:void(0)" class="dd-item hidden">🛡️ 後台管理</a>
-    <a id="cal-dd-theme"   href="javascript:void(0)" class="dd-item">🎨 外觀設定</a>
+    <button onclick="calCloseDropdown();document.getElementById('theme-panel').style.display='block';" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 16px;border:none;background:none;color:var(--txs);font-size:0.85rem;cursor:pointer;text-align:left;transition:background 0.15s;" onmouseover="this.style.background='var(--bg-h)';this.style.color='var(--tx)'" onmouseout="this.style.background='none';this.style.color='var(--txs)'">🎨 外觀設定</button>
   </div>
   <div class="dd-divider"></div>
   <div style="padding:4px 0;">
@@ -830,40 +901,40 @@ body {
   <div id="view-toggle" style="margin-left:auto;display:flex;align-items:center;gap:8px;">
     <!-- 週視圖縮放控制（只在週視圖顯示） -->
     <div id="zoom-ctrl" style="display:none;align-items:center;gap:4px;">
-      <button onclick="adjustZoom(-10)" style="background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:1rem;line-height:1;">−</button>
-      <span id="zoom-label" style="font-size:0.72rem;color:var(--text-muted);min-width:36px;text-align:center;">60px</span>
-      <button onclick="adjustZoom(10)" style="background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:1rem;line-height:1;">＋</button>
+      <button onclick="adjustZoom(-10)" style="background:none;border:1px solid var(--bd);color:var(--txs);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:1rem;line-height:1;">−</button>
+      <span id="zoom-label" style="font-size:0.72rem;color:var(--txs);min-width:36px;text-align:center;">60px</span>
+      <button onclick="adjustZoom(10)" style="background:none;border:1px solid var(--bd);color:var(--txs);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:1rem;line-height:1;">＋</button>
     </div>
     <!-- Google Calendar 同步按鈕 + 說明（只在週視圖顯示） -->
     <div id="sync-google-wrap" style="display:none;align-items:center;gap:4px;">
       <button id="btn-sync-google" onclick="syncFromGoogle()" title="從 Google 日曆拉回最新變更"
-        style="display:flex;align-items:center;gap:5px;padding:4px 10px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:0.8rem;cursor:pointer;white-space:nowrap;">
+        style="display:flex;align-items:center;gap:5px;padding:4px 10px;background:none;border:1px solid var(--bd);border-radius:8px;color:var(--txs);font-size:0.8rem;cursor:pointer;white-space:nowrap;">
         🔄 同步 Google
       </button>
       <button onclick="document.getElementById('gcal-setup-modal').style.display='flex'" title="如何設定 Google 日曆同步"
-        style="background:none;border:1px solid var(--border);border-radius:50%;width:22px;height:22px;font-size:0.75rem;color:var(--text-muted);cursor:pointer;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        style="background:none;border:1px solid var(--bd);border-radius:50%;width:22px;height:22px;font-size:0.75rem;color:var(--txs);cursor:pointer;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
         ？
       </button>
     </div>
 
     <!-- Google 日曆同步設定說明 Modal -->
     <div id="gcal-setup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;max-width:480px;width:90%;padding:28px 24px;box-shadow:0 8px 32px rgba(0,0,0,.4);position:relative;">
+      <div style="background:var(--bg-p);border:1px solid var(--bd);border-radius:14px;max-width:480px;width:90%;padding:28px 24px;box-shadow:0 8px 32px rgba(0,0,0,.4);position:relative;">
         <button onclick="document.getElementById('gcal-setup-modal').style.display='none'"
-          style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:1.3rem;color:var(--text-muted);cursor:pointer;line-height:1;">✕</button>
-        <h3 style="margin:0 0 16px;font-size:1rem;color:var(--text);display:flex;align-items:center;gap:8px;">
+          style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:1.3rem;color:var(--txs);cursor:pointer;line-height:1;">✕</button>
+        <h3 style="margin:0 0 16px;font-size:1rem;color:var(--tx);display:flex;align-items:center;gap:8px;">
           📅 如何與 Google 日曆同步
         </h3>
-        <p style="margin:0 0 10px;font-size:0.85rem;color:var(--text-muted);line-height:1.6;">
+        <p style="margin:0 0 10px;font-size:0.85rem;color:var(--txs);line-height:1.6;">
           業務行事曆使用「服務帳號」與 Google 日曆溝通。要讓你的 Google 日曆與這裡同步，需完成以下一次性設定：
         </p>
-        <ol style="margin:0 0 16px;padding-left:20px;font-size:0.85rem;color:var(--text);line-height:2;">
+        <ol style="margin:0 0 16px;padding-left:20px;font-size:0.85rem;color:var(--tx);line-height:2;">
           <li>開啟 <a href="https://calendar.google.com" target="_blank" style="color:var(--accent);">Google 日曆</a></li>
           <li>點選要同步的日曆旁的「⋮」→ <strong>設定與共用</strong></li>
           <li>找到「<strong>與特定使用者或群組共用</strong>」→ 點「<strong>+ 新增使用者和群組</strong>」</li>
           <li>輸入以下服務帳號 Email：</li>
         </ol>
-        <div style="background:var(--bg-card,#1e2533);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px;">
+        <div style="background:var(--bg-card,#1e2533);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px;">
           <code id="service-account-email" style="font-size:0.8rem;color:var(--accent);word-break:break-all;flex:1;">
             calendar-sync@gen-lang-client-0393195862.iam.gserviceaccount.com
           </code>
@@ -872,12 +943,12 @@ body {
             複製
           </button>
         </div>
-        <ol start="5" style="margin:0 0 16px;padding-left:20px;font-size:0.85rem;color:var(--text);line-height:2;">
+        <ol start="5" style="margin:0 0 16px;padding-left:20px;font-size:0.85rem;color:var(--tx);line-height:2;">
           <li>權限選「<strong>查看所有活動詳情</strong>」（唯讀）<br>
               或「<strong>進行變更及管理共用設定</strong>」（可新增/修改）</li>
           <li>點「傳送」，完成！</li>
         </ol>
-        <p style="margin:0;font-size:0.78rem;color:var(--text-muted);line-height:1.6;border-top:1px solid var(--border);padding-top:12px;">
+        <p style="margin:0;font-size:0.78rem;color:var(--txs);line-height:1.6;border-top:1px solid var(--bd);padding-top:12px;">
           設定完成後，在業務行事曆新增的行程會自動同步到 Google 日曆；點「🔄 同步 Google」可手動從 Google 日曆拉回最新變更。
         </p>
       </div>
@@ -1847,7 +1918,7 @@ function openSidePanel(dateStr, highlightId) {
   if (dayEvs.length === 0) {
     // 沒有行程時側欄不應被打開（格子點擊已改為直接開 Modal），這裡保留防呆
     list.innerHTML = `
-      <div style="text-align:center;padding:40px 0;color:var(--text-muted)">
+      <div style="text-align:center;padding:40px 0;color:var(--txs)">
         <div style="font-size:2rem;margin-bottom:8px">📭</div>
         <div>這天還沒有行程</div>
       </div>`;
@@ -1857,7 +1928,7 @@ function openSidePanel(dateStr, highlightId) {
     dayEvs.forEach(ev => {
       const card = document.createElement('div');
       card.className = `side-event-card ${ev.type}`;
-      if (highlightId && ev.id === highlightId) card.style.borderColor = 'var(--primary)';
+      if (highlightId && ev.id === highlightId) card.style.borderColor = 'var(--ac)';
 
       const typeLabel = { commission: '簽委託約', showing: '帶看', contract: '簽買賣契約' };
       const timeStr = (ev.start_dt || '').slice(11, 16);
@@ -2037,7 +2108,7 @@ function renderAcList(field, items, q) {
       seller: { label: '找不到相符賣方（賣方資料請在物件庫填寫屋主）', link: null, action: null },
     };
     const hint = hintMap[field] || { label: '找不到資料', link: null };
-    list.innerHTML = `<div class="ac-hint">⚠️ ${hint.label}${hint.link ? ` → <a href="#" onclick="${hint.action}()" style="color:var(--primary)">${hint.link}</a>` : ''}</div>`;
+    list.innerHTML = `<div class="ac-hint">⚠️ ${hint.label}${hint.link ? ` → <a href="#" onclick="${hint.action}()" style="color:var(--ac)">${hint.link}</a>` : ''}</div>`;
     list.classList.add('open');
     return;
   }
@@ -2339,31 +2410,116 @@ document.addEventListener('keydown', e => {
 <!-- ── 手機底部 Tab Bar ── -->
 <nav id="cal-tab-bar">
   <a href="javascript:void(0)" id="cal-tb-home" class="cal-tb-item">
-    <span style="font-size:1.25rem;">🏠</span>
+    <img src="/static/tool-reels.png" alt="" style="width:24px;height:24px;object-fit:contain;">
     <span>首頁</span>
   </a>
   <a href="javascript:void(0)" id="cal-tb-ad" class="cal-tb-item">
-    <span style="font-size:1.25rem;">📝</span>
+    <img src="/static/tool-ad.png" alt="" style="width:24px;height:24px;object-fit:contain;">
     <span>廣告</span>
   </a>
   <a href="javascript:void(0)" id="cal-tb-library" class="cal-tb-item">
-    <span style="font-size:1.25rem;">📁</span>
+    <img src="/static/tool-library.png" alt="" style="width:24px;height:24px;object-fit:contain;">
     <span>物件庫</span>
   </a>
   <a href="javascript:void(0)" id="cal-tb-buyer" class="cal-tb-item">
-    <span style="font-size:1.25rem;">👥</span>
+    <img src="/static/tool-buyer.png" alt="" style="width:24px;height:24px;object-fit:contain;">
     <span>買方</span>
   </a>
   <a href="javascript:void(0)" id="cal-tb-survey" class="cal-tb-item">
-    <span style="font-size:1.25rem;">📍</span>
+    <img src="/static/tool-survey.png" alt="" style="width:24px;height:24px;object-fit:contain;">
     <span>周邊</span>
   </a>
   <a href="#" class="cal-tb-item cal-tb-active">
-    <span style="font-size:1.25rem;">📅</span>
+    <img src="/static/tool-calendar.png" alt="" style="width:24px;height:24px;object-fit:contain;">
     <span>行事曆</span>
   </a>
 </nav>
 
 </div><!-- /#main-wrap -->
+
+<script>
+// ══ 主題同步系統（與 Portal/AD/Buyer/Survey 一致） ══
+(function() {
+  var STYLE_MODES = {
+    navy:    { dark:'navy-dark',    light:'navy-light'    },
+    forest:  { dark:'forest-dark',  light:'forest-light'  },
+    amber:   { dark:'amber-dark',   light:'amber-light'   },
+    minimal: { dark:'minimal-dark', light:'minimal-light' },
+    rose:    { dark:'rose-dark',    light:'rose-light'    },
+    oled:    { dark:'oled-dark',    light:'oled-dark'     },
+  };
+  var DARK_ONLY = ['oled'];
+  var _style = 'navy';
+  var _mode  = 'system';
+
+  function _applyTheme() {
+    var sys = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var eff = _mode === 'system' ? (sys ? 'dark' : 'light') : _mode;
+    if (DARK_ONLY.indexOf(_style) >= 0) eff = 'dark';
+    var key = (STYLE_MODES[_style] || STYLE_MODES.navy)[eff];
+    document.body.setAttribute('data-theme', key);
+    ['dark','light','system'].forEach(function(m) {
+      var btn = document.getElementById('tp-btn-' + m);
+      if (btn) btn.classList.toggle('active', m === _mode);
+    });
+    Object.keys(STYLE_MODES).forEach(function(s) {
+      var card = document.getElementById('tp-card-' + s);
+      if (card) card.classList.toggle('selected', s === _style);
+    });
+    var isOled = DARK_ONLY.indexOf(_style) >= 0;
+    ['light','system'].forEach(function(m) {
+      var btn = document.getElementById('tp-btn-' + m);
+      if (btn) { btn.disabled = isOled; btn.style.opacity = isOled ? '0.4' : '1'; }
+    });
+  }
+
+  window._tpSetMode = function(m) {
+    _mode = m; localStorage.setItem('up_mode', m); _applyTheme();
+    fetch('/api/theme', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mode:m})}).catch(function(){});
+  };
+  window._tpAdminSetStyle = function(s) { _style = s; localStorage.setItem('up_style', s); _applyTheme(); };
+  window._tpSaveStyle = function() {
+    fetch('/api/theme', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({style:_style})})
+      .then(function(r){ return r.json(); }).then(function(d) {
+        if (d.ok) {
+          localStorage.setItem('up_style', _style);
+          var msg = document.getElementById('tp-save-msg');
+          if (msg) { msg.style.display='block'; setTimeout(function(){msg.style.display='none';},3000); }
+        }
+      }).catch(function(){});
+  };
+
+  // 立即套用快取防閃白
+  (function() {
+    var s = localStorage.getItem('up_style') || 'navy';
+    var m = localStorage.getItem('up_mode') || 'system';
+    var sys = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var eff = m === 'system' ? (sys ? 'dark' : 'light') : m;
+    if (DARK_ONLY.indexOf(s) >= 0) eff = 'dark';
+    document.body.setAttribute('data-theme', (STYLE_MODES[s] || STYLE_MODES.navy)[eff]);
+  })();
+
+  document.addEventListener('DOMContentLoaded', function() {
+    _mode = localStorage.getItem('up_mode') || 'system';
+    _style = localStorage.getItem('up_style') || 'navy';
+    _applyTheme();
+    // 從後台讀取最新風格，確保跨工具同步
+    fetch('/api/theme').then(function(r){ return r.json(); }).then(function(d) {
+      var changed = false;
+      if (d.style && d.style !== _style) { _style = d.style; localStorage.setItem('up_style', _style); changed = true; }
+      if (d.mode && d.mode !== _mode) { _mode = d.mode; localStorage.setItem('up_mode', _mode); changed = true; }
+      if (changed) _applyTheme();
+    }).catch(function(){});
+    // 判斷是否管理員（顯示風格設定區）
+    fetch('/api/me').then(function(r){ return r.json(); }).then(function(d) {
+      var adminEl = document.getElementById('tp-admin-only');
+      if (adminEl && d.is_admin) adminEl.style.display = 'block';
+    }).catch(function(){});
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+      if (_mode === 'system') _applyTheme();
+    });
+  });
+})();
+</script>
 </body>
 </html>
