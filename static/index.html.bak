@@ -1,0 +1,2369 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<!-- favicon 已更新為透明版 -->
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>業務行事曆</title>
+<style>
+/* ── 全域重設與 CSS 變數 ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0f172a;
+  --surface:   #1e293b;
+  --surface2:  #273549;
+  --border:    #334155;
+  --text:      #e2e8f0;
+  --text-muted:#94a3b8;
+  --primary:   #3b82f6;
+  --primary-h: #2563eb;
+  --commission:#f59e0b;  /* 簽委託 — 琥珀 */
+  --showing:   #10b981;  /* 帶看 — 綠 */
+  --contract:  #8b5cf6;  /* 簽買賣 — 紫 */
+  --danger:    #ef4444;
+  --radius:    10px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── 頂部工具列 ── */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#topbar h1 { font-size: 1.1rem; font-weight: 700; flex: 1; }
+#btn-portal {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background .15s;
+}
+#btn-portal:hover { background: var(--surface2); }
+#btn-add-event {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background .15s;
+}
+#btn-add-event:hover { background: var(--primary-h); }
+#user-info { font-size: 0.82rem; color: var(--text-muted); }
+
+/* ── 導航列（月/週共用） ── */
+#cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── 月檢視主體 ── */
+#cal-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+#cal-title { font-size: 1.2rem; font-weight: 700; min-width: 140px; }
+.btn-nav {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background .15s;
+}
+.btn-nav:hover { background: var(--surface2); }
+#btn-today {
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background .15s;
+}
+#btn-today:hover { background: var(--surface2); }
+
+/* 星期標題列 */
+#cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+.weekday-label {
+  text-align: center;
+  padding: 6px 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: .05em;
+}
+
+/* 日期格子 */
+#cal-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: minmax(100px, 1fr);
+  gap: 0;
+  padding: 0 20px 20px;
+  overflow-y: auto;
+}
+.cal-day {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 4px 4px;
+  min-height: 100px;
+  cursor: pointer;
+  transition: background .1s;
+  position: relative;
+}
+.cal-day:hover { background: var(--surface2); }
+.cal-day.other-month .day-num { color: var(--text-muted); opacity: .5; }
+.cal-day.today { background: #1e3557; }
+.cal-day.today .day-num {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.day-num {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+}
+.day-events { display: flex; flex-direction: column; gap: 2px; }
+
+/* 行程小標籤 */
+.event-chip {
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity .15s;
+}
+.event-chip:hover { opacity: .8; }
+.chip-commission { background: rgba(245,158,11,.25); color: #fbbf24; border-left: 3px solid var(--commission); }
+.chip-showing    { background: rgba(16,185,129,.2); color: #34d399; border-left: 3px solid var(--showing); }
+.chip-contract   { background: rgba(139,92,246,.25); color: #a78bfa; border-left: 3px solid var(--contract); }
+.more-events { font-size: 0.7rem; color: var(--text-muted); padding: 1px 4px; }
+
+/* ── 行程列表側欄（點日期後顯示） ── */
+#side-panel {
+  position: fixed;
+  top: 0; right: -420px;
+  width: 400px;
+  height: 100%;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: right .25s ease;
+  z-index: 100;
+  box-shadow: -4px 0 20px rgba(0,0,0,.4);
+}
+#side-panel.open { right: 0; }
+#side-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#side-title { font-size: 1rem; font-weight: 700; flex: 1; }
+#side-close {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 1.4rem; cursor: pointer; line-height: 1;
+}
+#side-close:hover { color: var(--text); }
+#side-events-list { flex: 1; overflow-y: auto; padding: 16px; }
+.side-event-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color .15s;
+  border-left-width: 4px;
+}
+.side-event-card:hover { border-color: var(--primary); }
+.side-event-card.commission { border-left-color: var(--commission); }
+.side-event-card.showing    { border-left-color: var(--showing); }
+.side-event-card.contract   { border-left-color: var(--contract); }
+.sev-type { font-size: 0.72rem; font-weight: 700; letter-spacing: .06em; margin-bottom: 4px; }
+.sev-type.commission { color: var(--commission); }
+.sev-type.showing    { color: var(--showing); }
+.sev-type.contract   { color: var(--contract); }
+.sev-title { font-weight: 600; margin-bottom: 6px; }
+.sev-meta { font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; }
+.sev-actions { margin-top: 8px; display: flex; gap: 8px; }
+.btn-sm {
+  padding: 4px 10px; border-radius: 6px; font-size: 0.78rem;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-muted); cursor: pointer; transition: all .15s;
+}
+.btn-sm:hover { background: var(--surface); color: var(--text); }
+.btn-sm.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── 新增/編輯行程 Modal ── */
+#modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+#modal-overlay.open { display: flex; }
+#modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: min(560px, 96vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+#modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#modal-title { font-size: 1.05rem; font-weight: 700; flex: 1; }
+#modal-close {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 1.4rem; cursor: pointer; line-height: 1;
+}
+#modal-close:hover { color: var(--text); }
+#modal-body { flex: 1; overflow-y: auto; padding: 20px; }
+#modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+/* ── 情境類型選擇 ── */
+#type-selector { display: flex; gap: 10px; margin-bottom: 20px; }
+.type-btn {
+  flex: 1; padding: 10px 6px; border-radius: 8px;
+  border: 2px solid var(--border); background: transparent;
+  color: var(--text-muted); cursor: pointer; text-align: center;
+  font-size: 0.82rem; font-weight: 600; transition: all .15s;
+}
+.type-btn:hover { border-color: var(--text-muted); color: var(--text); }
+.type-btn.active-commission { border-color: var(--commission); color: var(--commission); background: rgba(245,158,11,.1); }
+.type-btn.active-showing    { border-color: var(--showing); color: var(--showing); background: rgba(16,185,129,.1); }
+.type-btn.active-contract   { border-color: var(--contract); color: var(--contract); background: rgba(139,92,246,.1); }
+
+/* ── 表單 ── */
+.form-group { margin-bottom: 14px; }
+.form-label {
+  display: block; font-size: 0.82rem; font-weight: 600;
+  color: var(--text-muted); margin-bottom: 6px;
+}
+.form-label .required { color: var(--danger); margin-left: 2px; }
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color .15s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); }
+.form-textarea { resize: vertical; min-height: 70px; }
+.form-row { display: flex; gap: 12px; }
+.form-row > .form-group { flex: 1; }
+
+/* 自動完成下拉 */
+.autocomplete-wrap { position: relative; }
+.autocomplete-list {
+  /* position:fixed 讓下拉清單不受父層 overflow:hidden/auto 裁切 */
+  position: fixed;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  z-index: 9999;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  min-width: 200px;
+}
+.autocomplete-list.open { display: block; }
+.ac-item {
+  padding: 9px 12px; cursor: pointer; font-size: 0.88rem;
+  border-bottom: 1px solid var(--border);
+  transition: background .1s;
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.highlighted { background: var(--surface); }
+.ac-item .ac-sub { font-size: 0.76rem; color: var(--text-muted); margin-top: 1px; }
+.ac-hint {
+  padding: 9px 12px; font-size: 0.8rem; color: var(--text-muted);
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* 欄位區塊切換 */
+.event-fields { display: none; }
+.event-fields.visible { display: block; }
+
+/* 按鈕 */
+.btn-primary {
+  padding: 9px 20px; border-radius: 8px; border: none;
+  background: var(--primary); color: #fff; font-weight: 600;
+  font-size: 0.9rem; cursor: pointer; transition: background .15s;
+}
+.btn-primary:hover { background: var(--primary-h); }
+.btn-secondary {
+  padding: 9px 20px; border-radius: 8px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-muted); font-size: 0.9rem;
+  cursor: pointer; transition: all .15s;
+}
+.btn-secondary:hover { background: var(--surface2); color: var(--text); }
+
+/* 提示訊息 */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: #1e3a5f; color: #93c5fd; border: 1px solid #3b82f6;
+  padding: 10px 20px; border-radius: 10px; font-size: 0.88rem;
+  opacity: 0; pointer-events: none; transition: opacity .3s;
+  z-index: 500;
+}
+#toast.show { opacity: 1; }
+#toast.error { background: #3b1a1a; color: #fca5a5; border-color: #ef4444; }
+
+/* 圖例 */
+#legend {
+  display: flex; gap: 16px; align-items: center;
+  padding: 8px 20px;
+  font-size: 0.78rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.legend-dot {
+  width: 10px; height: 10px; border-radius: 3px; display: inline-block;
+}
+
+/* ── 月/週切換按鈕 ── */
+#view-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.view-btn {
+  padding: 4px 14px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all .15s;
+}
+.view-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+.view-btn:not(.active):hover { background: var(--surface2); color: var(--text); }
+
+/* ── 週檢視容器 ── */
+#week-container {
+  flex: 1;
+  min-height: 0;
+  display: none;         /* 預設隱藏，切換到週才顯示 */
+  flex-direction: column;
+  overflow: hidden;
+}
+#week-container.visible { display: flex; }
+
+/* 週頂部：日期欄標題 */
+#week-header {
+  display: grid;
+  /* 第一欄是時間軸寬度，後面 7 欄是每天 */
+  grid-template-columns: 52px repeat(7, 1fr);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  padding: 0 8px 0 0;
+}
+.week-header-time { /* 左上角空白佔位 */ }
+.week-header-day {
+  text-align: center;
+  padding: 8px 4px 6px;
+  border-left: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.week-header-day .wh-weekday {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: .04em;
+  margin-bottom: 2px;
+}
+.week-header-day .wh-date {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  display: block;
+  line-height: 1.2;
+}
+.week-header-day.today-col .wh-date {
+  color: var(--primary);
+}
+.week-header-day.today-col {
+  background: rgba(59,130,246,.06);
+}
+
+/* 週主體：時間軸 + 格線 */
+#week-body {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+#week-grid {
+  display: grid;
+  grid-template-columns: 52px repeat(7, 1fr);
+  min-height: 100%;
+  padding: 0 8px 0 0;
+}
+
+/* 時間軸（左邊的小時標籤） */
+.week-time-col {
+  display: flex;
+  flex-direction: column;
+}
+.week-time-slot {
+  height: 60px;         /* 預設值，JS 會動態覆蓋 */
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 2px;
+  padding-right: 6px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  justify-content: flex-end;
+  border-top: 1px solid transparent;  /* 佔位，不畫線 */
+}
+
+/* 每天的格子欄 */
+.week-day-col {
+  border-left: 1px solid var(--border);
+  position: relative;
+  min-height: 1440px;   /* 24 小時 × 60px */
+}
+.week-day-col.today-col { background: rgba(59,130,246,.04); }
+
+/* 橫向時間格線（每小時一條） */
+.week-hour-line {
+  position: absolute;
+  left: 0; right: 0;
+  border-top: 1px solid var(--border);
+  opacity: .5;
+}
+.week-hour-line.half {
+  border-top-style: dashed;
+  opacity: .25;
+}
+
+/* 週檢視行程區塊 */
+.week-event {
+  position: absolute;
+  left: 3px; right: 3px;
+  border-radius: 5px;
+  padding: 3px 6px 10px 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: grab;
+  overflow: hidden;
+  line-height: 1.3;
+  transition: opacity .15s, filter .15s, box-shadow .15s;
+  z-index: 1;
+  user-select: none;
+}
+.week-event:hover { opacity: .9; filter: brightness(1.1); }
+.week-event.dragging {
+  cursor: grabbing;
+  opacity: 0.75;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  z-index: 100;
+  transition: none;
+}
+.week-event.drag-placeholder {
+  opacity: 0.3;
+  pointer-events: none;
+  border: 2px dashed currentColor;
+  background: transparent !important;
+}
+.week-event.commission { background: rgba(245,158,11,.3); color: #fbbf24; border-left: 3px solid var(--commission); }
+.week-event.showing    { background: rgba(16,185,129,.25); color: #34d399; border-left: 3px solid var(--showing); }
+.week-event.contract   { background: rgba(139,92,246,.3); color: #a78bfa; border-left: 3px solid var(--contract); }
+/* resize handle：行程底部拖曳調整結束時間 */
+.week-event-resize {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.week-event-resize::after {
+  content: '';
+  width: 24px; height: 3px;
+  background: currentColor;
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+/* 週檢視的「今天現在時間」紅線 */
+#week-now-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: #ef4444;
+  z-index: 10;
+  pointer-events: none;
+}
+#week-now-line::before {
+  content: '';
+  position: absolute;
+  left: -4px; top: -4px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+/* 點擊週格子新增行程的視覺提示 */
+.week-day-col:hover { cursor: pointer; }
+
+/* ── 桌機左側 Sidebar ── */
+#app-sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 200px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  padding: 16px 0;
+}
+#app-sidebar .sb-logo {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 16px 14px;
+  font-size: 0.9rem; font-weight: 700;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+#app-sidebar nav { flex: 1; }
+#app-sidebar nav a {
+  display: block;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: 6px;
+  margin: 2px 8px;
+  transition: background .15s, color .15s;
+}
+#app-sidebar nav a:hover { background: var(--surface2); color: var(--text); }
+#app-sidebar nav a.active { background: rgba(59,130,246,.15); color: var(--primary); font-weight: 600; }
+
+/* ── Sidebar 使用者區塊 ── */
+.sb-user {
+  padding: 10px 12px 4px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+.sb-user button {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 8px 10px;
+  border: none; background: none;
+  border-radius: 10px; cursor: pointer;
+  transition: background .15s;
+  text-align: left;
+}
+.sb-user button:hover { background: var(--surface2); }
+
+/* ── 頭像 ── */
+.av-wrap {
+  border-radius: 50%; overflow: hidden;
+  background: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.av-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.av-fb { color: #fff; font-weight: 700; font-size: 0.9rem; }
+
+/* ── 積分/管理員/訂閱 徽章 ── */
+.points-pill {
+  display: inline-block; padding: 1px 7px;
+  border-radius: 99px; font-size: 0.72rem; font-weight: 600;
+}
+.points-pill.points { background: rgba(59,130,246,.12); color: var(--primary); }
+.points-pill.admin  { background: rgba(139,92,246,.2);  color: rgb(196,167,255); }
+.points-pill.sub    { background: rgba(34,197,94,.2);   color: rgb(134,239,172); }
+.dd-item { display: flex; align-items: center; gap: 10px; }
+
+/* ── 使用者 Dropdown ── */
+#cal-user-dropdown {
+  position: fixed; bottom: 80px; left: 12px;
+  width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  z-index: 600;
+  display: none;
+  overflow: hidden;
+}
+#cal-user-dropdown .dd-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+#cal-user-dropdown .dd-header p {
+  font-size: 0.88rem; font-weight: 600;
+  color: var(--text); margin: 0 0 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#cal-user-dropdown a, #cal-user-dropdown button.dd-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  font-size: 0.85rem; color: var(--text-muted);
+  text-decoration: none; cursor: pointer;
+  transition: background .15s, color .15s;
+  width: 100%; border: none; background: none; text-align: left;
+}
+#cal-user-dropdown a:hover, #cal-user-dropdown button.dd-item:hover {
+  background: var(--surface2); color: var(--text);
+}
+#cal-user-dropdown .dd-divider { height: 1px; background: var(--border); margin: 4px 0; }
+#cal-user-dropdown .dd-danger { color: #ef4444; }
+#cal-user-dropdown .dd-danger:hover { background: rgba(239,68,68,.08); color: #dc2626; }
+
+/* 有 Sidebar 時，主內容向右偏移 */
+@media (min-width: 768px) {
+  body { flex-direction: row; }
+  #app-sidebar { display: flex; }
+  #main-wrap {
+    margin-left: 200px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+}
+@media (max-width: 767px) {
+  #app-sidebar { display: none; }
+  #main-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  /* 手機底部 Tab Bar 時，主內容留出空間 */
+  body { padding-bottom: 60px; }
+}
+
+/* ── 手機底部 Tab Bar ── */
+#cal-tab-bar {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 250;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@media (max-width: 767px) { #cal-tab-bar { display: flex; } }
+.cal-tb-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 2px;
+  padding: 8px 4px;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  text-decoration: none;
+  border-top: 2px solid transparent;
+  transition: color .15s;
+}
+.cal-tb-item:hover { color: var(--text); }
+.cal-tb-active { color: var(--primary) !important; border-top-color: var(--primary) !important; }
+</style>
+</head>
+<body>
+
+<!-- ── 桌機左側 Sidebar ── -->
+<aside id="app-sidebar">
+  <div class="sb-logo">
+    <span style="font-size:1.3rem;">📅</span>
+    <span>業務行事曆</span>
+  </div>
+  <nav>
+    <a href="javascript:void(0)" id="sb-portal-home" class="hidden">🏠 工具首頁</a>
+    <a href="javascript:void(0)" id="sb-ad" class="hidden">📝 廣告文案</a>
+    <a href="javascript:void(0)" id="sb-library" class="hidden">📁 物件庫</a>
+    <a href="javascript:void(0)" id="sb-buyer" class="hidden">👥 買方管理</a>
+    <a href="javascript:void(0)" id="sb-survey" class="hidden">📍 周邊調查</a>
+    <a href="#" class="active">📅 業務行事曆</a>
+  </nav>
+  <!-- 使用者頭像區（點擊展開 Dropdown） -->
+  <div class="sb-user">
+    <button type="button" onclick="calToggleDropdown(event)">
+      <div id="sb-avatar" class="av-wrap" style="width:36px;height:36px;">
+        <div class="av-fb">?</div>
+      </div>
+      <div style="min-width:0;flex:1;">
+        <div id="sb-name" style="font-size:0.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <span id="sb-badge" class="points-pill points" style="margin-top:2px;">— 點</span>
+      </div>
+      <svg style="width:16px;height:16px;color:var(--text-muted);flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+  </div>
+</aside>
+
+<!-- ── 使用者 Dropdown ── -->
+<div id="cal-user-dropdown">
+  <div class="dd-header">
+    <p id="cal-dd-name">載入中…</p>
+    <span id="cal-dd-badge" class="points-pill points" style="margin-top:4px;">— 點</span>
+  </div>
+  <div style="padding:4px 0;">
+    <a id="cal-dd-plans"   href="javascript:void(0)" class="dd-item hidden">⬆️ 升級方案</a>
+    <a id="cal-dd-account" href="javascript:void(0)" class="dd-item hidden">👤 帳號管理</a>
+    <a id="cal-dd-admin"   href="javascript:void(0)" class="dd-item hidden">🛡️ 後台管理</a>
+    <a id="cal-dd-theme"   href="javascript:void(0)" class="dd-item">🎨 外觀設定</a>
+  </div>
+  <div class="dd-divider"></div>
+  <div style="padding:4px 0;">
+    <button class="dd-item dd-danger" onclick="calDoLogout()">🚪 登出</button>
+  </div>
+</div>
+<div id="cal-dd-backdrop" style="display:none;position:fixed;inset:0;z-index:499;" onclick="calCloseDropdown()"></div>
+
+<!-- ── 主內容包裝（Sidebar 右側） ── -->
+<div id="main-wrap">
+
+<!-- ── 頂部工具列 ── -->
+<div id="topbar">
+  <h1>📅 業務行事曆</h1>
+  <span id="user-info"></span>
+  <button id="btn-portal" onclick="goPortal()">🏠 入口</button>
+  <button id="btn-add-event" onclick="openModal()">＋ 新增行程</button>
+</div>
+
+<!-- ── 圖例 ── -->
+<div id="legend">
+  <span>行程類型：</span>
+  <span><span class="legend-dot" style="background:var(--commission)"></span> 簽委託約</span>
+  <span><span class="legend-dot" style="background:var(--showing)"></span> 帶看</span>
+  <span><span class="legend-dot" style="background:var(--contract)"></span> 簽買賣契約</span>
+</div>
+
+<!-- ── 月/週 共用導航列 ── -->
+<div id="cal-nav">
+  <button class="btn-nav" id="btn-prev" onclick="navPrev()">‹</button>
+  <button class="btn-nav" id="btn-next" onclick="navNext()">›</button>
+  <span id="cal-title"></span>
+  <button id="btn-today" onclick="goToday()">今天</button>
+  <!-- 月/週切換 -->
+  <div id="view-toggle" style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+    <!-- 週視圖縮放控制（只在週視圖顯示） -->
+    <div id="zoom-ctrl" style="display:none;align-items:center;gap:4px;">
+      <button onclick="adjustZoom(-10)" style="background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:1rem;line-height:1;">−</button>
+      <span id="zoom-label" style="font-size:0.72rem;color:var(--text-muted);min-width:36px;text-align:center;">60px</span>
+      <button onclick="adjustZoom(10)" style="background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:1rem;line-height:1;">＋</button>
+    </div>
+    <!-- Google Calendar 同步按鈕 + 說明（只在週視圖顯示） -->
+    <div id="sync-google-wrap" style="display:none;align-items:center;gap:4px;">
+      <button id="btn-sync-google" onclick="syncFromGoogle()" title="從 Google 日曆拉回最新變更"
+        style="display:flex;align-items:center;gap:5px;padding:4px 10px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:0.8rem;cursor:pointer;white-space:nowrap;">
+        🔄 同步 Google
+      </button>
+      <button onclick="document.getElementById('gcal-setup-modal').style.display='flex'" title="如何設定 Google 日曆同步"
+        style="background:none;border:1px solid var(--border);border-radius:50%;width:22px;height:22px;font-size:0.75rem;color:var(--text-muted);cursor:pointer;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        ？
+      </button>
+    </div>
+
+    <!-- Google 日曆同步設定說明 Modal -->
+    <div id="gcal-setup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;max-width:480px;width:90%;padding:28px 24px;box-shadow:0 8px 32px rgba(0,0,0,.4);position:relative;">
+        <button onclick="document.getElementById('gcal-setup-modal').style.display='none'"
+          style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:1.3rem;color:var(--text-muted);cursor:pointer;line-height:1;">✕</button>
+        <h3 style="margin:0 0 16px;font-size:1rem;color:var(--text);display:flex;align-items:center;gap:8px;">
+          📅 如何與 Google 日曆同步
+        </h3>
+        <p style="margin:0 0 10px;font-size:0.85rem;color:var(--text-muted);line-height:1.6;">
+          業務行事曆使用「服務帳號」與 Google 日曆溝通。要讓你的 Google 日曆與這裡同步，需完成以下一次性設定：
+        </p>
+        <ol style="margin:0 0 16px;padding-left:20px;font-size:0.85rem;color:var(--text);line-height:2;">
+          <li>開啟 <a href="https://calendar.google.com" target="_blank" style="color:var(--accent);">Google 日曆</a></li>
+          <li>點選要同步的日曆旁的「⋮」→ <strong>設定與共用</strong></li>
+          <li>找到「<strong>與特定使用者或群組共用</strong>」→ 點「<strong>+ 新增使用者和群組</strong>」</li>
+          <li>輸入以下服務帳號 Email：</li>
+        </ol>
+        <div style="background:var(--bg-card,#1e2533);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px;">
+          <code id="service-account-email" style="font-size:0.8rem;color:var(--accent);word-break:break-all;flex:1;">
+            calendar-sync@gen-lang-client-0393195862.iam.gserviceaccount.com
+          </code>
+          <button onclick="navigator.clipboard.writeText('calendar-sync@gen-lang-client-0393195862.iam.gserviceaccount.com').then(()=>showToast('已複製！'))"
+            style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;white-space:nowrap;flex-shrink:0;">
+            複製
+          </button>
+        </div>
+        <ol start="5" style="margin:0 0 16px;padding-left:20px;font-size:0.85rem;color:var(--text);line-height:2;">
+          <li>權限選「<strong>查看所有活動詳情</strong>」（唯讀）<br>
+              或「<strong>進行變更及管理共用設定</strong>」（可新增/修改）</li>
+          <li>點「傳送」，完成！</li>
+        </ol>
+        <p style="margin:0;font-size:0.78rem;color:var(--text-muted);line-height:1.6;border-top:1px solid var(--border);padding-top:12px;">
+          設定完成後，在業務行事曆新增的行程會自動同步到 Google 日曆；點「🔄 同步 Google」可手動從 Google 日曆拉回最新變更。
+        </p>
+      </div>
+    </div>
+    <button class="view-btn" id="view-month" onclick="switchView('month')">月</button>
+    <button class="view-btn active" id="view-week" onclick="switchView('week')">週</button>
+  </div>
+</div>
+
+<!-- ── 月檢視 ── -->
+<div id="cal-container">
+  <!-- 星期標題 -->
+  <div id="cal-weekdays">
+    <div class="weekday-label">一</div>
+    <div class="weekday-label">二</div>
+    <div class="weekday-label">三</div>
+    <div class="weekday-label">四</div>
+    <div class="weekday-label">五</div>
+    <div class="weekday-label" style="color:#60a5fa">六</div>
+    <div class="weekday-label" style="color:#ef4444">日</div>
+  </div>
+
+  <!-- 格子 -->
+  <div id="cal-grid"></div>
+</div>
+
+<!-- ── 週檢視 ── -->
+<div id="week-container">
+  <!-- 週標題（7 天日期欄） -->
+  <div id="week-header">
+    <div class="week-header-time"></div>
+    <!-- JS 動態填入 7 個 .week-header-day -->
+  </div>
+  <!-- 週主體（時間軸 + 行程） -->
+  <div id="week-body">
+    <div id="week-grid">
+      <!-- JS 動態填入 -->
+    </div>
+    <!-- 現在時間紅線，JS 動態定位 -->
+    <div id="week-now-line" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- ── 右側欄（點日期後的行程清單） ── -->
+<div id="side-panel">
+  <div id="side-header">
+    <span id="side-title">行程</span>
+    <button id="side-close" onclick="closePanel()">✕</button>
+  </div>
+  <div id="side-events-list"></div>
+</div>
+
+<!-- ── 新增/編輯行程 Modal ── -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div id="modal-header">
+      <span id="modal-title">新增行程</span>
+      <button id="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body">
+
+      <!-- 行程類型選擇 -->
+      <div id="type-selector">
+        <button class="type-btn" id="type-commission" onclick="setType('commission')">
+          📋 簽委託約
+        </button>
+        <button class="type-btn" id="type-showing" onclick="setType('showing')">
+          🏠 帶看
+        </button>
+        <button class="type-btn" id="type-contract" onclick="setType('contract')">
+          🤝 簽買賣契約
+        </button>
+      </div>
+
+      <!-- 時間 -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">開始時間<span class="required">*</span></label>
+          <input type="datetime-local" id="f-start" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">結束時間</label>
+          <input type="datetime-local" id="f-end" class="form-input">
+        </div>
+      </div>
+
+      <!-- 物件（commission / showing / contract 都要） -->
+      <div class="form-group event-fields visible" id="field-prop">
+        <label class="form-label">物件名稱<span class="required">*</span></label>
+        <div class="autocomplete-wrap">
+          <input type="text" id="f-prop" class="form-input" placeholder="輸入關鍵字搜尋物件…" autocomplete="off"
+            oninput="acSearch('prop', this.value)" onblur="acBlur('prop')" onfocus="acFocus('prop')">
+          <div class="autocomplete-list" id="ac-prop"></div>
+        </div>
+        <input type="hidden" id="f-prop-id">
+      </div>
+
+      <!-- 賣方（commission / contract） -->
+      <div class="form-group event-fields" id="field-seller">
+        <label class="form-label">賣方姓名<span class="required">*</span></label>
+        <div class="autocomplete-wrap">
+          <input type="text" id="f-seller" class="form-input" placeholder="輸入賣方姓名…" autocomplete="off"
+            oninput="acSearch('seller', this.value)" onblur="acBlur('seller')" onfocus="acFocus('seller')">
+          <div class="autocomplete-list" id="ac-seller"></div>
+        </div>
+      </div>
+
+      <!-- 買方（showing / contract） -->
+      <div class="form-group event-fields" id="field-buyer">
+        <label class="form-label">買方姓名<span class="required">*</span></label>
+        <div class="autocomplete-wrap">
+          <input type="text" id="f-buyer" class="form-input" placeholder="輸入買方姓名…" autocomplete="off"
+            oninput="acSearch('buyer', this.value)" onblur="acBlur('buyer')" onfocus="acFocus('buyer')">
+          <div class="autocomplete-list" id="ac-buyer"></div>
+        </div>
+        <input type="hidden" id="f-buyer-id">
+      </div>
+
+      <!-- 成交價（contract） -->
+      <div class="form-group event-fields" id="field-price">
+        <label class="form-label">成交價（萬元）</label>
+        <input type="number" id="f-price" class="form-input" placeholder="例：800">
+      </div>
+
+      <!-- 標題（自動生成，可手動修改） -->
+      <div class="form-group">
+        <label class="form-label">行程標題（選填，留空自動生成）</label>
+        <input type="text" id="f-title" class="form-input" placeholder="留空則自動產生">
+      </div>
+
+      <!-- 備註 -->
+      <div class="form-group">
+        <label class="form-label">備註</label>
+        <textarea id="f-note" class="form-textarea" placeholder="備註…"></textarea>
+      </div>
+    </div>
+    <div id="modal-footer">
+      <button class="btn-secondary" onclick="closeModal()">取消</button>
+      <button class="btn-primary" id="btn-save" onclick="saveEvent()">儲存行程</button>
+    </div>
+  </div>
+</div>
+
+<!-- 提示 Toast -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  全域狀態：整個頁面共用的變數
+// ══════════════════════════════════════════
+let currentYear  = new Date().getFullYear();  // 目前顯示的年份
+let currentMonth = new Date().getMonth();     // 目前顯示的月份（0=1月，11=12月）
+let allEvents    = [];   // 從後端撈回的當月行程清單
+let editingId    = null; // 正在編輯的行程 ID（null = 新增模式）
+let selectedType = '';   // 目前選擇的行程類型：commission / showing / contract
+let selectedDate = null; // 使用者點選的日期字串（YYYY-MM-DD）
+
+// 自動完成：快取搜尋結果 + 記住使用者點選的項目
+const acCache    = { prop: [], buyer: [], seller: [] };
+const acSelected = { prop: null, buyer: null, seller: null };
+
+// 記錄使用者是否手動改過結束時間
+// true = 手動改過，開始時間變動時不再自動跟隨；false = 尚未手動改，跟著走
+let endTimeManuallySet = false;
+
+// ══════════════════════════════════════════
+//  初始化：頁面載入完成後執行
+// ══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadMe();      // 取得登入者資訊顯示在右上角
+  renderCalendar();    // 先畫月曆骨架（背景備用）
+  // 預設直接顯示週視圖（當週）
+  switchView('week');
+
+  // ── 開始時間變動 → 自動更新結束時間（智慧跟隨）──
+  document.getElementById('f-start').addEventListener('change', function () {
+    // 如果使用者已經手動設過結束時間，就不自動更動（尊重使用者意圖）
+    if (endTimeManuallySet) return;
+
+    const startVal = this.value;
+    if (!startVal) return;
+
+    // 把開始時間加 1 小時，填入結束時間
+    const startMs = new Date(startVal).getTime();
+    const endDate = new Date(startMs + 60 * 60 * 1000);  // +1 小時（毫秒）
+
+    // 轉成 datetime-local 需要的格式 YYYY-MM-DDTHH:MM
+    const pad = n => String(n).padStart(2, '0');
+    const endStr = `${endDate.getFullYear()}-${pad(endDate.getMonth()+1)}-${pad(endDate.getDate())}T${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+    document.getElementById('f-end').value = endStr;
+  });
+
+  // ── 結束時間被手動修改 → 記錄下來，之後不再自動跟隨 ──
+  document.getElementById('f-end').addEventListener('change', function () {
+    endTimeManuallySet = true;
+  });
+});
+
+// ── 頭像輔助函數 ──
+function _setAvatar(ids, pictureUrl, name) {
+  ids.forEach(id => {
+    const wrap = document.getElementById(id);
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    if (pictureUrl) {
+      const img = document.createElement('img');
+      img.src = pictureUrl;
+      img.onerror = () => { wrap.innerHTML = '<div class="av-fb">' + (name ? name[0].toUpperCase() : '?') + '</div>'; };
+      wrap.appendChild(img);
+    } else {
+      wrap.innerHTML = '<div class="av-fb">' + (name ? name[0].toUpperCase() : '?') + '</div>';
+    }
+  });
+}
+
+// 取得目前登入者姓名，顯示在頂部工具列與 Sidebar 頭像
+async function loadMe() {
+  try {
+    const r = await fetch('/api/me');
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.error) return;
+
+    // 頂部文字（舊）
+    const ui = document.getElementById('user-info');
+    if (ui) ui.textContent = d.name || d.email || '';
+
+    // Sidebar 頭像與姓名
+    _setAvatar(['sb-avatar'], d.picture || '', d.name || '');
+    const sbName = document.getElementById('sb-name');
+    if (sbName) sbName.textContent = d.name || d.email || '';
+
+    // Dropdown 姓名
+    const ddName = document.getElementById('cal-dd-name');
+    if (ddName) ddName.textContent = d.name || d.email || '';
+
+    // 積分/管理員/訂閱 徽章（和 Portal 一致）
+    const subActive = d.subscription_active ||
+      (d.subscription_end ? new Date(d.subscription_end.replace('Z','').slice(0,19)).getTime() > Date.now() : false);
+    ['sb-badge', 'cal-dd-badge'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = 'points-pill';
+      if (d.is_admin) {
+        el.classList.add('admin'); el.textContent = '管理員';
+      } else if (subActive) {
+        el.classList.add('sub');
+        el.textContent = d.subscription_plan === 'yearly' ? '年訂閱' : '月訂閱';
+      } else {
+        el.classList.add('points');
+        el.textContent = (d.points != null ? d.points : 0) + ' 點';
+      }
+    });
+
+    // 後台管理：is_admin 才顯示
+    const ddAdmin = document.getElementById('cal-dd-admin');
+    if (ddAdmin) {
+      if (d.is_admin) ddAdmin.classList.remove('hidden');
+      else ddAdmin.classList.add('hidden');
+    }
+    // 外觀設定：導向 Portal 的 /account（行事曆本身無外觀設定面板）
+    const portalBase2 = (window._PORTAL_URL || '').replace(/\/$/, '');
+    const ddTheme = document.getElementById('cal-dd-theme');
+    if (ddTheme && portalBase2) { ddTheme.href = portalBase2 + '/account'; }
+  } catch {}
+}
+
+// ── Dropdown 開關 ──
+function calToggleDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('cal-user-dropdown');
+  const bd = document.getElementById('cal-dd-backdrop');
+  const isOpen = dd.style.display === 'block';
+  dd.style.display = isOpen ? 'none' : 'block';
+  bd.style.display = isOpen ? 'none' : 'block';
+}
+function calCloseDropdown() {
+  document.getElementById('cal-user-dropdown').style.display = 'none';
+  document.getElementById('cal-dd-backdrop').style.display = 'none';
+}
+
+// 登出
+function calDoLogout() {
+  calCloseDropdown();
+  fetch('/auth/logout', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => { if (d.portal_url) location.href = d.portal_url; else location.reload(); })
+    .catch(() => location.reload());
+}
+
+// ══════════════════════════════════════════
+//  檢視切換：月 / 週
+// ══════════════════════════════════════════
+let currentView = 'week';   // 預設週視圖
+// 週檢視用：目前週的週一日期（Date 物件）
+let currentWeekMonday = getMonday(new Date());
+
+/** 傳入任意 Date，回傳該週的週一 Date */
+function getMonday(d) {
+  const day = d.getDay();              // 0=日, 1=一 … 6=六
+  const diff = (day === 0) ? -6 : 1 - day;  // 週一算起：日要往前6天
+  const mon = new Date(d);
+  mon.setDate(d.getDate() + diff);
+  mon.setHours(0, 0, 0, 0);
+  return mon;
+}
+
+/** 切換月/週檢視 */
+function switchView(view) {
+  currentView = view;
+  document.getElementById('view-month').classList.toggle('active', view === 'month');
+  document.getElementById('view-week').classList.toggle('active', view === 'week');
+  document.getElementById('cal-container').style.display   = view === 'month' ? '' : 'none';
+  document.getElementById('week-container').classList.toggle('visible', view === 'week');
+  // zoom 控制只在週視圖顯示
+  const zoomCtrl = document.getElementById('zoom-ctrl');
+  if (zoomCtrl) zoomCtrl.style.display = view === 'week' ? 'flex' : 'none';
+  // Google 同步按鈕（含說明）只在週視圖顯示
+  const syncWrap = document.getElementById('sync-google-wrap');
+  if (syncWrap) syncWrap.style.display = view === 'week' ? 'flex' : 'none';
+  if (view === 'week') {
+    // 切到週時顯示當週（以今天為基準）
+    currentWeekMonday = getMonday(new Date());
+    renderWeek();
+    loadWeekEvents().then(() => {
+      renderWeek();
+      scrollToNow();
+    });
+  } else {
+    renderCalendar();
+    loadEvents();
+  }
+}
+
+/** 統一的「上一個」按鈕 */
+function navPrev() {
+  if (currentView === 'month') {
+    currentMonth--;
+    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    renderCalendar();
+    loadEvents();
+  } else {
+    currentWeekMonday = new Date(currentWeekMonday);
+    currentWeekMonday.setDate(currentWeekMonday.getDate() - 7);
+    renderWeek();
+    loadWeekEvents();
+  }
+}
+
+/** 統一的「下一個」按鈕 */
+function navNext() {
+  if (currentView === 'month') {
+    currentMonth++;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    renderCalendar();
+    loadEvents();
+  } else {
+    currentWeekMonday = new Date(currentWeekMonday);
+    currentWeekMonday.setDate(currentWeekMonday.getDate() + 7);
+    renderWeek();
+    loadWeekEvents();
+  }
+}
+
+// ══════════════════════════════════════════
+//  月檢視渲染：把當月格子畫到 #cal-grid 裡
+//  月曆從「週一」開始（0=Mon … 6=Sun）
+// ══════════════════════════════════════════
+function renderCalendar() {
+  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  document.getElementById('cal-title').textContent = `${currentYear} 年 ${months[currentMonth]}`;
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  // 當月第一天是星期幾（原始 0=日，改成 0=週一 的編號）
+  const rawDay = new Date(currentYear, currentMonth, 1).getDay();  // 0=日
+  const firstDay = (rawDay === 0) ? 6 : rawDay - 1;  // 0=週一 … 6=週日
+  // 當月天數
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  // 上個月天數
+  const daysInPrev  = new Date(currentYear, currentMonth, 0).getDate();
+
+  const today = new Date();
+  const todayStr = toDateStr(today);
+
+  // 按日期索引行程
+  const eventMap = {};
+  allEvents.forEach(ev => {
+    const d = (ev.start_dt || '').slice(0, 10);
+    if (!eventMap[d]) eventMap[d] = [];
+    eventMap[d].push(ev);
+  });
+
+  // 填格子（共 6 列 × 7 = 42 格），從週一開始排
+  for (let i = 0; i < 42; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+
+    let dateStr, dayNum, isOther = false;
+
+    if (i < firstDay) {
+      // 上個月尾
+      dayNum = daysInPrev - firstDay + i + 1;
+      const m = currentMonth === 0 ? 11 : currentMonth - 1;
+      const y = currentMonth === 0 ? currentYear - 1 : currentYear;
+      dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+      isOther = true;
+    } else if (i >= firstDay + daysInMonth) {
+      // 下個月頭
+      dayNum = i - firstDay - daysInMonth + 1;
+      const m = currentMonth === 11 ? 0 : currentMonth + 1;
+      const y = currentMonth === 11 ? currentYear + 1 : currentYear;
+      dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+      isOther = true;
+    } else {
+      dayNum = i - firstDay + 1;
+      dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+    }
+
+    if (isOther) cell.classList.add('other-month');
+    if (dateStr === todayStr) cell.classList.add('today');
+
+    // 日期數字
+    const numEl = document.createElement('div');
+    numEl.className = 'day-num';
+    numEl.textContent = dayNum;
+    cell.appendChild(numEl);
+
+    // 行程
+    const evDiv = document.createElement('div');
+    evDiv.className = 'day-events';
+    const dayEvs = eventMap[dateStr] || [];
+    const maxShow = 3;
+    dayEvs.slice(0, maxShow).forEach(ev => {
+      const chip = document.createElement('div');
+      chip.className = `event-chip chip-${ev.type}`;
+      const timeStr = (ev.start_dt || '').slice(11, 16);
+      const label = { commission: '📋', showing: '🏠', contract: '🤝' }[ev.type] || '';
+      chip.textContent = `${label} ${timeStr ? timeStr + ' ' : ''}${ev.title}`;
+      chip.title = ev.title;
+      chip.onclick = (e) => { e.stopPropagation(); openSidePanel(dateStr, ev.id); };
+      evDiv.appendChild(chip);
+    });
+    if (dayEvs.length > maxShow) {
+      const more = document.createElement('div');
+      more.className = 'more-events';
+      more.textContent = `還有 ${dayEvs.length - maxShow} 個`;
+      evDiv.appendChild(more);
+    }
+    cell.appendChild(evDiv);
+
+    // 點格子：有行程→開側欄查看；沒行程→直接開 Modal 新增
+    cell.onclick = () => {
+      const hasEvents = (eventMap[dateStr] || []).length > 0;
+      if (hasEvents) {
+        openSidePanel(dateStr);
+      } else {
+        openModal(dateStr);
+      }
+    };
+    grid.appendChild(cell);
+  }
+}
+
+// ══════════════════════════════════════════
+//  週檢視渲染
+// ══════════════════════════════════════════
+let weekEvents = [];   // 週檢視用的行程快取
+let nowLineTimer = null;
+
+function renderWeek() {
+  const mon = currentWeekMonday;
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);  // 週日
+
+  // 更新標題
+  const fmt = (d) => `${d.getMonth()+1}/${d.getDate()}`;
+  document.getElementById('cal-title').textContent =
+    `${mon.getFullYear()} 年  ${fmt(mon)} – ${fmt(sun)}`;
+
+  const today = new Date();
+  const todayStr = toDateStr(today);
+
+  // ── 週標題（日期欄） ──
+  const weekDayNames = ['週一','週二','週三','週四','週五','週六','週日'];
+  const header = document.getElementById('week-header');
+  header.innerHTML = '<div class="week-header-time"></div>';
+  for (let d = 0; d < 7; d++) {
+    const date = new Date(mon); date.setDate(mon.getDate() + d);
+    const ds = toDateStr(date);
+    const isToday = ds === todayStr;
+    const col = document.createElement('div');
+    col.className = 'week-header-day' + (isToday ? ' today-col' : '');
+    col.innerHTML = `<span class="wh-weekday">${weekDayNames[d]}</span>
+                     <span class="wh-date">${date.getDate()}</span>`;
+    header.appendChild(col);
+  }
+
+  // ── 週格線主體 ──
+  const wgrid = document.getElementById('week-grid');
+  wgrid.innerHTML = '';
+
+  // 左邊時間軸（高度跟 hourPx 同步）
+  const timeCol = document.createElement('div');
+  timeCol.className = 'week-time-col';
+  for (let h = 0; h < 24; h++) {
+    const slot = document.createElement('div');
+    slot.className = 'week-time-slot';
+    slot.style.height = hourPx + 'px';
+    slot.textContent = h === 0 ? '' : `${h}:00`;
+    timeCol.appendChild(slot);
+  }
+  wgrid.appendChild(timeCol);
+
+  // 按日期索引行程（用 weekEvents）
+  const eventMap = {};
+  weekEvents.forEach(ev => {
+    const d = (ev.start_dt || '').slice(0, 10);
+    if (!eventMap[d]) eventMap[d] = [];
+    eventMap[d].push(ev);
+  });
+
+  // 每天一欄
+  for (let d = 0; d < 7; d++) {
+    const date = new Date(mon); date.setDate(mon.getDate() + d);
+    const ds = toDateStr(date);
+    const isToday = ds === todayStr;
+
+    const col = document.createElement('div');
+    col.className = 'week-day-col' + (isToday ? ' today-col' : '');
+    col.style.minHeight = (hourPx * 24) + 'px';
+
+    // 畫橫格線（每小時 + 半小時虛線，跟 hourPx 同步）
+    for (let h = 0; h < 24; h++) {
+      const line = document.createElement('div');
+      line.className = 'week-hour-line';
+      line.style.top = `${h * hourPx}px`;
+      col.appendChild(line);
+      if (h > 0) {
+        const half = document.createElement('div');
+        half.className = 'week-hour-line half';
+        half.style.top = `${h * hourPx - hourPx / 2}px`;
+        col.appendChild(half);
+      }
+    }
+
+    // 畫行程
+    const dayEvs = (eventMap[ds] || []).sort((a, b) => a.start_dt.localeCompare(b.start_dt));
+    dayEvs.forEach(ev => {
+      const startM = timeToMinutes(ev.start_dt);
+      const endM   = timeToMinutes(ev.end_dt) || (startM + 60);
+      const dur    = Math.max(endM - startM, 15);
+      const pxPerMin = hourPx / 60;  // 每分鐘幾 px
+      const block  = document.createElement('div');
+      block.className = `week-event ${ev.type}`;
+      block.style.top    = `${startM * pxPerMin}px`;
+      block.style.height = `${dur * pxPerMin}px`;
+      block.dataset.evId = ev.id;
+      block.dataset.date = ds;
+      const label = { commission: '📋', showing: '🏠', contract: '🤝' }[ev.type] || '';
+      const timeStr = (ev.start_dt || '').slice(11, 16);
+      const textNode = document.createElement('span');
+      textNode.textContent = `${label} ${timeStr} ${ev.title}`;
+      block.appendChild(textNode);
+      block.title = ev.title;
+      // resize handle（底部拖曳）
+      const resizeHandle = document.createElement('div');
+      resizeHandle.className = 'week-event-resize';
+      resizeHandle.addEventListener('mousedown', (e) => {
+        e.stopPropagation(); e.preventDefault();
+        startResizeDrag(e, block, ev, col);
+      });
+      block.appendChild(resizeHandle);
+      // 點擊開啟（沒有拖曳時才觸發）
+      block.addEventListener('mousedown', (e) => {
+        if (e.target === resizeHandle || resizeHandle.contains(e.target)) return;
+        e.stopPropagation();
+        startMoveDrag(e, block, ev, wgrid, mon);
+      });
+      col.appendChild(block);
+    });
+
+    // 點空白格子 → 開 Modal 新增行程（拖曳結束後不觸發）
+    col.addEventListener('click', (e) => {
+      if (_isDragging) return;      // 剛完成拖曳，忽略這個 click
+      if (e.target !== col) return; // 點到行程 block 也忽略
+      const rect = col.getBoundingClientRect();
+      const y = e.clientY - rect.top + document.getElementById('week-body').scrollTop;
+      const h = Math.floor(y / hourPx);
+      const hh = String(Math.min(h, 23)).padStart(2, '0');
+      const dtStr = `${ds}T${hh}:00`;
+      openModal(ds, dtStr);
+    });
+
+    wgrid.appendChild(col);
+  }
+
+  // 今天現在時間紅線
+  updateNowLine();
+  if (nowLineTimer) clearInterval(nowLineTimer);
+  nowLineTimer = setInterval(updateNowLine, 60000);  // 每分鐘更新
+}
+
+// ── 週視圖縮放（每小時高度） ──
+let hourPx = 60; // 預設每小時 60px
+
+function adjustZoom(delta) {
+  hourPx = Math.max(40, Math.min(120, hourPx + delta));
+  document.getElementById('zoom-label').textContent = hourPx + 'px';
+  // 重新 render 週視圖
+  renderWeek();
+  // 更新 scrollTop 讓現在時間保持可見
+  scrollToNow();
+}
+
+function scrollToNow() {
+  const now = new Date();
+  const m = now.getHours() * 60 + now.getMinutes();
+  const body = document.getElementById('week-body');
+  if (body) body.scrollTop = Math.max(0, (m / 60) * hourPx - 200);
+}
+
+// ── Google Calendar 雙向同步 ──
+
+/**
+ * 從 Google Calendar 拉回變更並更新本系統。
+ * 點「🔄 同步 Google」按鈕時呼叫，每 10 分鐘也自動執行一次。
+ */
+async function syncFromGoogle() {
+  const btn = document.getElementById('btn-sync-google');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '同步中…';
+  }
+  try {
+    const res = await fetch('/api/sync-from-google');
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      const msg = data.updated > 0
+        ? `✅ ${data.message}`
+        : `✓ 已同步（無變更）`;
+      showToast(msg);
+      // 若有更新，重新載入行程
+      if (data.updated > 0) {
+        await loadWeekEvents();
+        renderWeek();
+      }
+    } else {
+      const errMsg = data.error || '同步失敗，請確認 Google Calendar 環境變數已設定';
+      showToast('⚠️ ' + errMsg, true);
+    }
+  } catch (e) {
+    showToast('⚠️ 同步失敗：' + e.message, true);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🔄 同步 Google';
+    }
+  }
+}
+
+// 每 10 分鐘自動從 Google Calendar 拉取一次（在週視圖時才執行）
+setInterval(() => {
+  if (currentView === 'week') {
+    syncFromGoogle();
+  }
+}, 10 * 60 * 1000);
+
+// ── 拖曳功能：移動行程 ──
+// 全域 flag：拖曳進行中，阻止 col click 觸發 openModal
+let _isDragging = false;
+
+function startMoveDrag(e, block, ev, wgrid, weekMon) {
+  const pxPerMin = hourPx / 60;
+  const SNAP_PX = 15 * pxPerMin; // 15 分鐘對應的 px
+  let moved = false;
+  const origTop = parseFloat(block.style.top);
+  const origHeight = parseFloat(block.style.height);
+  const startY = e.clientY;
+  const startX = e.clientX;
+
+  // 找出所有日期欄（排除時間軸）
+  const dayCols = Array.from(wgrid.querySelectorAll('.week-day-col'));
+  const origColIndex = dayCols.indexOf(block.parentElement);
+
+  // 建立拖曳中的視覺複製（ghost）
+  const ghost = block.cloneNode(true);
+  ghost.style.opacity = '0.85';
+  ghost.style.pointerEvents = 'none';
+  ghost.style.zIndex = '200';
+  ghost.classList.add('dragging');
+  ghost.style.width = block.offsetWidth + 'px';
+  ghost.style.left = block.style.left;
+  ghost.style.right = block.style.right;
+
+  // 原本位置顯示佔位虛線框
+  block.classList.add('drag-placeholder');
+
+  let currentCol = block.parentElement;
+  currentCol.appendChild(ghost);
+
+  const onMove = (me) => {
+    const dy = me.clientY - startY;
+    const dx = me.clientX - startX;
+    if (!moved && Math.abs(dy) < 5 && Math.abs(dx) < 5) return;
+    moved = true;
+
+    // 計算新的時間（Y軸），對齊 15 分鐘
+    let newTop = origTop + dy;
+    newTop = Math.round(newTop / SNAP_PX) * SNAP_PX;
+    newTop = Math.max(0, Math.min(hourPx * 24 - origHeight, newTop));
+    ghost.style.top = newTop + 'px';
+
+    // 判斷是否跨欄（X軸）
+    const bodyRect = document.getElementById('week-body').getBoundingClientRect();
+    const scrollLeft = document.getElementById('week-body').scrollLeft || 0;
+    dayCols.forEach((col, i) => {
+      const rect = col.getBoundingClientRect();
+      if (me.clientX >= rect.left && me.clientX <= rect.right) {
+        if (col !== currentCol) {
+          currentCol.removeChild(ghost);
+          currentCol = col;
+          currentCol.appendChild(ghost);
+          block.parentElement !== currentCol && block.parentElement.contains(block);
+        }
+      }
+    });
+  };
+
+  const onUp = async (ue) => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+
+    if (!moved) {
+      // 沒有移動 → 視為點擊，開啟 side panel
+      block.classList.remove('drag-placeholder');
+      if (ghost.parentElement) ghost.parentElement.removeChild(ghost);
+      openSidePanel(ev.start_dt.slice(0, 10), ev.id);
+      return;
+    }
+
+    // 設旗標，讓 col 的 click 事件知道這是拖曳結束，不要新增行程
+    _isDragging = true;
+    setTimeout(() => { _isDragging = false; }, 300);
+
+    // 計算新的日期欄
+    const newColIndex = dayCols.indexOf(currentCol);
+    const newDate = new Date(weekMon);
+    newDate.setDate(weekMon.getDate() + newColIndex);
+    const newDateStr = toDateStr(newDate);
+
+    // 計算新的開始/結束時間（px → 分鐘）
+    const newStartM = Math.round(parseFloat(ghost.style.top) / pxPerMin / 15) * 15;
+    const duration = timeToMinutes(ev.end_dt) - timeToMinutes(ev.start_dt) || 60;
+    const newEndM = Math.min(newStartM + duration, 1439);
+
+    const newStartDt = `${newDateStr}T${minsToTimeStr(newStartM)}:00`;
+    const newEndDt   = `${newDateStr}T${minsToTimeStr(newEndM)}:00`;
+
+    try {
+      await fetch(`/api/events/${ev.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...ev, start_dt: newStartDt, end_dt: newEndDt })
+      });
+      showToast('行程已更新');
+    } catch(err) {
+      showToast('更新失敗', true);
+    }
+
+    block.classList.remove('drag-placeholder');
+    if (ghost.parentElement) ghost.parentElement.removeChild(ghost);
+    // 重新載入
+    if (currentView === 'week') { await loadWeekEvents(); renderWeek(); }
+    else { await loadDayEvents(); renderDay(); }
+  };
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+// ── 拖曳功能：調整結束時間（resize） ──
+function startResizeDrag(e, block, ev, col) {
+  const pxPerMin = hourPx / 60;
+  const SNAP_PX = 15 * pxPerMin;
+  const startY = e.clientY;
+  const origHeight = parseFloat(block.style.height);
+  const origTop = parseFloat(block.style.top);
+
+  block.classList.add('dragging');
+
+  const onMove = (me) => {
+    const dy = me.clientY - startY;
+    let newH = origHeight + dy;
+    newH = Math.round(newH / SNAP_PX) * SNAP_PX;
+    newH = Math.max(SNAP_PX, Math.min(hourPx * 24 - origTop, newH));
+    block.style.height = newH + 'px';
+  };
+
+  const onUp = async () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    block.classList.remove('dragging');
+    _isDragging = true;
+    setTimeout(() => { _isDragging = false; }, 300);
+
+    const newEndM = Math.round((origTop + parseFloat(block.style.height)) / pxPerMin / 15) * 15;
+    const dateStr = ev.start_dt.slice(0, 10);
+    const newEndDt = `${dateStr}T${minsToTimeStr(Math.min(Math.round(newEndM), 1439))}:00`;
+
+    try {
+      await fetch(`/api/events/${ev.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...ev, end_dt: newEndDt })
+      });
+      showToast('結束時間已更新');
+    } catch(err) {
+      showToast('更新失敗', true);
+    }
+
+    if (currentView === 'week') { await loadWeekEvents(); renderWeek(); }
+    else { await loadDayEvents(); renderDay(); }
+  };
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+/** 分鐘數轉 "HH:MM" */
+function minsToTimeStr(m) {
+  const h = Math.floor(m / 60) % 24;
+  const min = m % 60;
+  return String(h).padStart(2,'0') + ':' + String(min).padStart(2,'0');
+}
+
+/** 把 "YYYY-MM-DDTHH:MM:SS" 轉成當天的分鐘數（0–1439） */
+function timeToMinutes(dtStr) {
+  if (!dtStr) return 0;
+  const parts = dtStr.slice(11, 16).split(':');
+  return parseInt(parts[0]) * 60 + parseInt(parts[1] || 0);
+}
+
+/** 畫「現在時間」紅線（只在週內有今天才顯示） */
+function updateNowLine() {
+  const line = document.getElementById('week-now-line');
+  const now = new Date();
+  const todayStr = toDateStr(now);
+  const mon = currentWeekMonday;
+
+  // 判斷今天是否在目前週內
+  let todayColIndex = -1;
+  for (let d = 0; d < 7; d++) {
+    const date = new Date(mon); date.setDate(mon.getDate() + d);
+    if (toDateStr(date) === todayStr) { todayColIndex = d; break; }
+  }
+
+  const cols = document.querySelectorAll('.week-day-col');
+  if (todayColIndex < 0 || cols.length === 0) {
+    line.style.display = 'none';
+    return;
+  }
+
+  const todayCol = cols[todayColIndex];
+  const bodyEl = document.getElementById('week-body');
+  const gridEl = document.getElementById('week-grid');
+  const colRect = todayCol.getBoundingClientRect();
+  const gridRect = gridEl.getBoundingClientRect();
+
+  const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+  const topInGrid = minutesSinceMidnight * (hourPx / 60);  // 跟 hourPx 同步
+
+  // 紅線的 left/right 對齊到今天那欄
+  const leftOffset = colRect.left - gridRect.left + 52;  // 52px = 時間軸寬
+  line.style.display = 'block';
+  line.style.top    = `${topInGrid}px`;
+  line.style.left   = `${colRect.left - gridRect.left}px`;
+  line.style.right  = `${gridRect.right - colRect.right}px`;
+  line.style.width  = '';
+}
+
+// ══════════════════════════════════════════
+//  載入週行程（週範圍的 API 請求）
+// ══════════════════════════════════════════
+async function loadWeekEvents() {
+  const mon = currentWeekMonday;
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 7);  // 下週一（不含）
+  const start = toDateStr(mon);
+  const end   = toDateStr(sun);
+  try {
+    const r = await fetch(`/api/events?start=${start}&end=${end}`);
+    if (!r.ok) {
+      if (r.status === 401) { showToast('請先登入', true); return; }
+      throw new Error(await r.text());
+    }
+    weekEvents = await r.json();
+    renderWeek();
+  } catch (e) {
+    showToast('載入週行程失敗：' + e.message, true);
+  }
+}
+
+// ──────────────────────────────────────────
+//  月/週共用的導覽與今天按鈕（舊函式保留，
+//  navPrev/navNext 已統一接管，這裡兼容性保留）
+// ──────────────────────────────────────────
+
+// 跳回今天所在的月份/週
+function goToday() {
+  const now = new Date();
+  currentYear  = now.getFullYear();
+  currentMonth = now.getMonth();
+  if (currentView === 'week') {
+    currentWeekMonday = getMonday(now);
+    renderWeek();
+    loadWeekEvents();
+  } else {
+    renderCalendar();
+    loadEvents();
+  }
+}
+
+// 把 Date 物件轉成 YYYY-MM-DD 字串，方便比對
+function toDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ══════════════════════════════════════════
+//  載入行程：從後端 API 拉當月資料
+// ══════════════════════════════════════════
+async function loadEvents() {
+  // 起始日 = 當月第一天
+  const start = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-01`;
+  // 結束日 = 下個月第一天（API 用 < 判斷，所以不含當天）
+  let ey = currentYear, em = currentMonth + 1;
+  if (em > 11) { em = 0; ey++; }   // 12月→跨年到1月
+  const end = `${ey}-${String(em+1).padStart(2,'0')}-01`;
+
+  try {
+    const r = await fetch(`/api/events?start=${start}&end=${end}`);
+    if (!r.ok) {
+      if (r.status === 401) { showToast('請先登入', true); return; }
+      throw new Error(await r.text());
+    }
+    allEvents = await r.json();
+    renderCalendar();
+  } catch (e) {
+    showToast('載入行程失敗：' + e.message, true);
+  }
+}
+
+// ══════════════════════════════════════════
+//  側欄：點日期後從右邊滑入，列出當天行程
+// ══════════════════════════════════════════
+// highlightId：從行程 chip 點進來時，高亮指定那筆
+function openSidePanel(dateStr, highlightId) {
+  selectedDate = dateStr;  // 記住目前選的日期，新增行程時預填
+  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const [y, m, d] = dateStr.split('-');
+  document.getElementById('side-title').textContent = `${y} 年 ${months[parseInt(m)-1]} ${parseInt(d)} 日`;
+
+  const list = document.getElementById('side-events-list');
+  // 月檢視用 allEvents，週檢視用 weekEvents；合併去重後過濾當天
+  const mergedSrc = currentView === 'week' ? weekEvents : allEvents;
+  const dayEvs = mergedSrc.filter(ev => (ev.start_dt || '').startsWith(dateStr));
+
+  if (dayEvs.length === 0) {
+    // 沒有行程時側欄不應被打開（格子點擊已改為直接開 Modal），這裡保留防呆
+    list.innerHTML = `
+      <div style="text-align:center;padding:40px 0;color:var(--text-muted)">
+        <div style="font-size:2rem;margin-bottom:8px">📭</div>
+        <div>這天還沒有行程</div>
+      </div>`;
+  } else {
+    list.innerHTML = '';
+
+    dayEvs.forEach(ev => {
+      const card = document.createElement('div');
+      card.className = `side-event-card ${ev.type}`;
+      if (highlightId && ev.id === highlightId) card.style.borderColor = 'var(--primary)';
+
+      const typeLabel = { commission: '簽委託約', showing: '帶看', contract: '簽買賣契約' };
+      const timeStr = (ev.start_dt || '').slice(11, 16);
+      const endStr  = (ev.end_dt || '').slice(11, 16);
+
+      let meta = [];
+      if (timeStr) meta.push(`⏰ ${timeStr}${endStr ? ' – ' + endStr : ''}`);
+      if (ev.seller_name) meta.push(`賣方：${ev.seller_name}`);
+      if (ev.buyer_name)  meta.push(`買方：${ev.buyer_name}`);
+      if (ev.prop_name)   meta.push(`物件：${ev.prop_name}`);
+      if (ev.deal_price)  meta.push(`成交價：${ev.deal_price} 萬`);
+      if (ev.note)        meta.push(`備註：${ev.note}`);
+
+      card.innerHTML = `
+        <div class="sev-type ${ev.type}">${typeLabel[ev.type] || ev.type}</div>
+        <div class="sev-title">${ev.title}</div>
+        <div class="sev-meta">${meta.join('<br>')}</div>
+        <div class="sev-actions">
+          <button class="btn-sm" onclick="editEvent('${ev.id}')">✏️ 編輯</button>
+          <button class="btn-sm danger" onclick="deleteEvent('${ev.id}')">🗑️ 刪除</button>
+        </div>`;
+      list.appendChild(card);
+    });
+  }
+
+  document.getElementById('side-panel').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('side-panel').classList.remove('open');
+}
+
+// ══════════════════════════════════════════
+//  Modal：新增 / 編輯行程的彈窗
+// ══════════════════════════════════════════
+
+// 開啟 Modal（新增模式）
+// dateStr：從日曆格子點進來時帶入的日期，預填開始時間
+function openModal(dateStr, dtStr) {
+  editingId = null;  // 清空 → 進入新增模式
+  document.getElementById('modal-title').textContent = '新增行程';
+  clearForm();
+
+  const ds = dateStr || (selectedDate || toDateStr(new Date()));
+  const now = new Date();
+
+  let startDt, endDt;
+  if (dtStr) {
+    // 週檢視點格子傳入的完整時間（YYYY-MM-DDTHH:MM）
+    startDt = dtStr;
+    const h = parseInt(dtStr.slice(11, 13));
+    endDt = `${ds}T${String(Math.min(h + 1, 23)).padStart(2, '0')}:00`;
+  } else {
+    // 月檢視點格子：用現在時間整點
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    startDt = `${ds}T${hh}:${mm}`;
+    endDt   = `${ds}T${String(Math.min(now.getHours() + 1, 23)).padStart(2, '0')}:${mm}`;
+  }
+  document.getElementById('f-start').value = startDt;
+  document.getElementById('f-end').value   = endDt;
+
+  // 預設行程類型：簽委託約
+  setType('commission');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingId = null;
+}
+
+// 點彈窗背景（overlay）也能關閉
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// 清空表單所有欄位和自動完成的選取狀態
+function clearForm() {
+  ['f-start','f-end','f-title','f-prop','f-seller','f-buyer','f-price','f-note'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('f-prop-id').value   = '';   // 物件 ID（隱藏欄）
+  document.getElementById('f-buyer-id').value  = '';   // 買方 ID（隱藏欄）
+  Object.keys(acSelected).forEach(k => acSelected[k] = null);  // 清除自動完成記錄
+  endTimeManuallySet = false;  // 重置「手動改過結束時間」的記錄，讓自動跟隨恢復作用
+}
+
+// ══════════════════════════════════════════
+//  情境類型切換：依選擇的行程類型顯示對應欄位
+// ══════════════════════════════════════════
+// 三種類型的欄位對應：
+//   commission（簽委託）：物件 + 賣方
+//   showing（帶看）     ：物件 + 買方
+//   contract（簽買賣）  ：物件 + 賣方 + 買方 + 成交價
+function setType(type) {
+  selectedType = type;
+
+  // 更新三個類型按鈕的 CSS 樣式（只有選中的那個加上顏色邊框）
+  ['commission','showing','contract'].forEach(t => {
+    const btn = document.getElementById('type-' + t);
+    btn.className = 'type-btn' + (t === type ? ` active-${t}` : '');
+  });
+
+  // 物件欄位：三種情境都需要
+  document.getElementById('field-prop').classList.add('visible');
+
+  // 賣方欄位：簽委託 / 簽買賣 才顯示
+  const showSeller = type === 'commission' || type === 'contract';
+  document.getElementById('field-seller').classList.toggle('visible', showSeller);
+
+  // 買方欄位：帶看 / 簽買賣 才顯示
+  const showBuyer = type === 'showing' || type === 'contract';
+  document.getElementById('field-buyer').classList.toggle('visible', showBuyer);
+
+  // 成交價欄位：只有簽買賣才顯示
+  document.getElementById('field-price').classList.toggle('visible', type === 'contract');
+}
+
+// ══════════════════════════════════════════
+//  自動完成：輸入關鍵字 → 延遲搜尋 → 顯示候選清單
+//  支援三個欄位：prop（物件）/ buyer（買方）/ seller（賣方）
+// ══════════════════════════════════════════
+let acTimers = {};  // 每個欄位各自的防抖計時器
+
+// 使用者在輸入框打字時觸發，防抖 300ms 後才真正送出請求
+function acSearch(field, q) {
+  // 使用者改了文字 → 清除之前選中的候選項和隱藏 ID
+  acSelected[field] = null;
+  if (field === 'prop')  document.getElementById('f-prop-id').value = '';
+  if (field === 'buyer') document.getElementById('f-buyer-id').value = '';
+
+  // 取消上一次還沒執行的搜尋，重新計時（避免每打一個字就送一次請求）
+  clearTimeout(acTimers[field]);
+  acTimers[field] = setTimeout(() => _doAcSearch(field, q), 300);
+}
+
+// 實際向後端 API 搜尋候選清單
+async function _doAcSearch(field, q) {
+  if (!q || q.length < 1) { acClose(field); return; }  // 空字串就關掉下拉
+
+  // 對應後端路徑：/api/suggest/properties、/api/suggest/buyers、/api/suggest/sellers
+  const endpointMap = { prop: 'properties', buyer: 'buyers', seller: 'sellers' };
+  const ep = endpointMap[field];
+
+  try {
+    const r = await fetch(`/api/suggest/${ep}?q=${encodeURIComponent(q)}`);
+    // 未登入時後端回 401
+    if (r.status === 401) {
+      showToast('登入已過期，請重新從入口進入', true);
+      acClose(field);
+      return;
+    }
+    const data = await r.json();
+    const items = data.items || [];
+    acCache[field] = items;
+    renderAcList(field, items, q);
+  } catch (err) {
+    // 原本靜默關掉，現在顯示錯誤方便除錯
+    console.error('acSearch error:', field, err);
+    acClose(field);
+  }
+}
+
+// 把候選清單渲染到下拉 div，找不到資料時顯示提示訊息
+function renderAcList(field, items, q) {
+  const list = document.getElementById('ac-' + field);
+  // 先定位（position:fixed 需要計算座標）
+  acPosition(field);
+
+  if (items.length === 0) {
+    // 沒有符合的資料 → 提示使用者去對應工具補建資料
+    const hintMap = {
+      prop:   { label: '找不到相符物件', link: '物件庫', action: 'openLibrary' },
+      buyer:  { label: '找不到相符買方', link: '買方管理', action: 'openBuyer' },
+      seller: { label: '找不到相符賣方（賣方資料請在物件庫填寫屋主）', link: null, action: null },
+    };
+    const hint = hintMap[field] || { label: '找不到資料', link: null };
+    list.innerHTML = `<div class="ac-hint">⚠️ ${hint.label}${hint.link ? ` → <a href="#" onclick="${hint.action}()" style="color:var(--primary)">${hint.link}</a>` : ''}</div>`;
+    list.classList.add('open');
+    return;
+  }
+
+  list.innerHTML = '';
+  items.slice(0, 8).forEach((item, idx) => {
+    const el = document.createElement('div');
+    el.className = 'ac-item';
+    if (field === 'prop') {
+      // Library 回傳中文 key：案名、地址（非英文 name/address）
+      const propName = item['案名'] || item.name || item.project_name || '';
+      const propAddr = item['地址'] || item['縣市鄉鎮'] || item.address || item.location_area || '';
+      el.innerHTML = `<div>${propName}</div>
+        <div class="ac-sub">${propAddr}</div>`;
+      el.onclick = () => {
+        document.getElementById('f-prop').value = propName;
+        document.getElementById('f-prop-id').value = item.id || '';
+        acSelected.prop = item;
+        acClose('prop');
+      };
+    } else if (field === 'buyer') {
+      el.innerHTML = `<div>${item.name}</div>
+        <div class="ac-sub">${item.phone || ''}</div>`;
+      el.onclick = () => {
+        document.getElementById('f-buyer').value = item.name;
+        document.getElementById('f-buyer-id').value = item.id || '';
+        acSelected.buyer = item;
+        acClose('buyer');
+      };
+    } else if (field === 'seller') {
+      el.innerHTML = `<div>${item.name}</div>
+        <div class="ac-sub">${item.phone || item.sub || ''}</div>`;
+      el.onclick = () => {
+        document.getElementById('f-seller').value = item.name;
+        acSelected.seller = item;
+        acClose('seller');
+      };
+    }
+    list.appendChild(el);
+  });
+  list.classList.add('open');
+}
+
+// 將下拉清單定位到輸入框正下方（因為用 position:fixed，需要 JS 計算座標）
+function acPosition(field) {
+  const input = document.getElementById('f-' + field);
+  const list  = document.getElementById('ac-' + field);
+  if (!input || !list) return;
+  const rect = input.getBoundingClientRect();
+  list.style.top   = (rect.bottom + 2) + 'px';
+  list.style.left  = rect.left + 'px';
+  list.style.width = rect.width + 'px';
+}
+
+// 關閉指定欄位的下拉清單
+function acClose(field) {
+  const list = document.getElementById('ac-' + field);
+  if (list) list.classList.remove('open');
+}
+
+// 輸入框失去焦點時：延遲 200ms 才關閉，讓 onclick 有機會先觸發
+function acBlur(field) {
+  setTimeout(() => acClose(field), 200);
+}
+
+// 輸入框重新取得焦點時：若已有輸入內容就重新觸發搜尋（避免候選消失）
+function acFocus(field) {
+  const val = document.getElementById('f-' + field)?.value;
+  if (val && val.length >= 1) acSearch(field, val);
+}
+
+// 提示使用者到其他工具補建資料，並關閉 Modal
+function openLibrary() {
+  showToast('請到「物件庫」新增物件後再回來');
+  closeModal();
+}
+function openBuyer() {
+  showToast('請到「買方管理」新增買方後再回來');
+  closeModal();
+}
+
+// ══════════════════════════════════════════
+//  儲存行程：新增或更新（依 editingId 判斷）
+// ══════════════════════════════════════════
+async function saveEvent() {
+  if (!selectedType) { showToast('請選擇行程類型', true); return; }
+
+  // 從表單收集所有欄位的值
+  const start   = document.getElementById('f-start').value;
+  const end     = document.getElementById('f-end').value;
+  const prop    = document.getElementById('f-prop').value.trim();
+  const propId  = document.getElementById('f-prop-id').value.trim();   // 從自動完成選中後填入
+  const seller  = document.getElementById('f-seller').value.trim();
+  const buyer   = document.getElementById('f-buyer').value.trim();
+  const buyerId = document.getElementById('f-buyer-id').value.trim();  // 從自動完成選中後填入
+  const price   = document.getElementById('f-price').value;
+  const title   = document.getElementById('f-title').value.trim();
+  const note    = document.getElementById('f-note').value.trim();
+
+  // 前端驗證：必填欄位檢查（後端也會再驗一次，這裡是讓使用者即時看到錯誤）
+  if (!start) { showToast('請填寫開始時間', true); return; }
+  if (!prop)  { showToast('請填寫物件名稱', true); return; }
+  if ((selectedType === 'commission' || selectedType === 'contract') && !seller) {
+    showToast('請填寫賣方姓名', true); return;
+  }
+  if ((selectedType === 'showing' || selectedType === 'contract') && !buyer) {
+    showToast('請填寫買方姓名', true); return;
+  }
+
+  // 組裝送出後端的 JSON body
+  const body = {
+    type: selectedType,
+    start_dt: start.includes('T') ? start + ':00+08:00' : start,
+    end_dt:   end   ? (end.includes('T') ? end + ':00+08:00' : end) : '',
+    prop_name: prop,
+    prop_id:  propId,
+    seller_name: seller,
+    buyer_name:  buyer,
+    buyer_id:    buyerId,
+    deal_price:  price ? parseFloat(price) : null,
+    title,
+    note,
+  };
+
+  // 送出期間禁用按鈕，避免重複點擊
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.textContent = '儲存中…';
+
+  try {
+    let r;
+    if (editingId) {
+      // editingId 有值 → 更新既有行程（PUT）
+      r = await fetch(`/api/events/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } else {
+      // editingId 為 null → 新增行程（POST）
+      r = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    }
+
+    if (!r.ok) {
+      const d = await r.json();
+      throw new Error(d.error || '儲存失敗');
+    }
+
+    const ev = await r.json();
+    // gcal_event_id 有值代表後端成功推送到 Google 日曆
+    showToast(editingId ? '行程已更新 ✓' : `行程已新增${ev.gcal_event_id ? '，已同步 Google 日曆 ✓' : ''}`);
+    closeModal();
+    // 依目前檢視模式重新載入行程
+    if (currentView === 'week') { await loadWeekEvents(); } else { await loadEvents(); }
+    // 儲存完成後自動打開該日的側欄，方便使用者確認
+    if (selectedDate || ev.start_dt) {
+      openSidePanel((ev.start_dt || '').slice(0, 10) || selectedDate, ev.id);
+    }
+  } catch (e) {
+    showToast('錯誤：' + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '儲存行程';
+  }
+}
+
+// ══════════════════════════════════════════
+//  編輯行程：從後端撈出資料填入表單，進入編輯模式
+// ══════════════════════════════════════════
+async function editEvent(id) {
+  try {
+    const r = await fetch(`/api/events/${id}`);
+    if (!r.ok) throw new Error('取得行程失敗');
+    const ev = await r.json();
+
+    editingId = id;  // 設定為編輯模式，saveEvent() 會用 PUT 送出
+    document.getElementById('modal-title').textContent = '編輯行程';
+    clearForm();
+    setType(ev.type || 'commission');  // 先切換類型，才能正確顯示對應欄位
+
+    // 把舊資料填回表單
+    document.getElementById('f-start').value    = (ev.start_dt || '').slice(0, 16);  // 去掉秒和時區
+    document.getElementById('f-end').value      = (ev.end_dt   || '').slice(0, 16);
+    // 編輯模式的結束時間是使用者當初設好的，標記為「已手動設定」，不讓開始時間變動時自動覆蓋
+    if (ev.end_dt) endTimeManuallySet = true;
+    document.getElementById('f-prop').value     = ev.prop_name  || '';
+    document.getElementById('f-prop-id').value  = ev.prop_id    || '';  // 隱藏欄：物件 ID
+    document.getElementById('f-seller').value   = ev.seller_name || '';
+    document.getElementById('f-buyer').value    = ev.buyer_name  || '';
+    document.getElementById('f-buyer-id').value = ev.buyer_id    || '';  // 隱藏欄：買方 ID
+    document.getElementById('f-price').value    = ev.deal_price != null ? ev.deal_price : '';
+    document.getElementById('f-title').value    = ev.title || '';
+    document.getElementById('f-note').value     = ev.note  || '';
+
+    document.getElementById('modal-overlay').classList.add('open');
+  } catch (e) {
+    showToast('載入行程失敗：' + e.message, true);
+  }
+}
+
+// ══════════════════════════════════════════
+//  刪除行程：確認後送出 DELETE，並更新畫面
+// ══════════════════════════════════════════
+async function deleteEvent(id) {
+  if (!confirm('確定要刪除這個行程嗎？')) return;  // 二次確認，防止誤觸
+  try {
+    const r = await fetch(`/api/events/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('刪除失敗');
+    showToast('行程已刪除');
+    // 依目前檢視模式重新載入
+    if (currentView === 'week') { await loadWeekEvents(); } else { await loadEvents(); }
+    // 刪除後重新整理側欄（同一天可能還有其他行程）
+    if (selectedDate) openSidePanel(selectedDate);
+  } catch (e) {
+    showToast('刪除失敗：' + e.message, true);
+  }
+}
+
+// ══════════════════════════════════════════
+//  工具函式
+// ══════════════════════════════════════════
+
+// 登出並跳回 Portal 入口
+// 呼叫後端 /auth/logout 取得 Portal URL，再跳轉過去
+function goPortal() {
+  fetch('/auth/logout', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => { if (d.redirect) location.href = d.redirect; })
+    .catch(() => { location.href = '/'; });
+}
+
+// 顯示底部提示訊息（Toast），3.5 秒後自動消失
+// isError = true 時顯示紅色錯誤樣式
+let _toastTimer;
+function showToast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+}
+
+// 按 ESC 鍵快速關閉 Modal 和側欄
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeModal();
+    closePanel();
+  }
+});
+
+// ── 載入 config，設定 Sidebar 和 Tab Bar 連結 ──
+(function() {
+  fetch('/api/config')
+    .then(r => r.json())
+    .then(cfg => {
+      var portalUrl = (cfg.portal_url || '').replace(/\/$/, '');
+      if (!portalUrl || portalUrl === '/') return;
+      var portalBase = portalUrl;
+      // 存到全域，供 loadMe() 的 Dropdown 連結使用
+      window._PORTAL_URL = portalUrl;
+      // Dropdown 連結（升級方案、帳號管理、後台管理）
+      var ddPlans   = document.getElementById('cal-dd-plans');
+      var ddAccount = document.getElementById('cal-dd-account');
+      var ddAdmin   = document.getElementById('cal-dd-admin');
+      if (ddPlans)   { ddPlans.href   = portalBase + '/plans';   ddPlans.classList.remove('hidden'); }
+      if (ddAccount) { ddAccount.href = portalBase + '/account'; ddAccount.classList.remove('hidden'); }
+      if (ddAdmin) { ddAdmin.href = portalBase + '/admin'; ddAdmin.classList.remove('hidden'); }
+      // Sidebar 連結
+      var sbPortal = document.getElementById('sb-portal-home');
+      if (sbPortal) { sbPortal.href = portalUrl; sbPortal.target = 'tool-portal'; sbPortal.classList.remove('hidden'); }
+      var sbAd = document.getElementById('sb-ad');
+      if (sbAd) { sbAd.href = portalBase + '/api/enter/post'; sbAd.target = 'tool-post'; sbAd.classList.remove('hidden'); }
+      var sbLib = document.getElementById('sb-library');
+      if (sbLib) { sbLib.href = portalBase + '/api/enter/library'; sbLib.target = 'tool-library'; sbLib.classList.remove('hidden'); }
+      var sbBuyer = document.getElementById('sb-buyer');
+      if (sbBuyer) { sbBuyer.href = portalBase + '/api/enter/buyer'; sbBuyer.target = 'tool-buyer'; sbBuyer.classList.remove('hidden'); }
+      var sbSurvey = document.getElementById('sb-survey');
+      if (sbSurvey) { sbSurvey.href = portalBase + '/api/enter/survey'; sbSurvey.target = 'tool-survey'; sbSurvey.classList.remove('hidden'); }
+      // Tab Bar 連結
+      var tbHome = document.getElementById('cal-tb-home');
+      if (tbHome) { tbHome.href = portalUrl; tbHome.target = 'tool-portal'; }
+      var tbAd = document.getElementById('cal-tb-ad');
+      if (tbAd) { tbAd.href = portalBase + '/api/enter/post'; tbAd.target = 'tool-post'; }
+      var tbLib = document.getElementById('cal-tb-library');
+      if (tbLib) { tbLib.href = portalBase + '/api/enter/library'; tbLib.target = 'tool-library'; }
+      var tbBuyer = document.getElementById('cal-tb-buyer');
+      if (tbBuyer) { tbBuyer.href = portalBase + '/api/enter/buyer'; tbBuyer.target = 'tool-buyer'; }
+      var tbSurvey = document.getElementById('cal-tb-survey');
+      if (tbSurvey) { tbSurvey.href = portalBase + '/api/enter/survey'; tbSurvey.target = 'tool-survey'; }
+    })
+    .catch(() => {});
+})();
+</script>
+
+<!-- ── 手機底部 Tab Bar ── -->
+<nav id="cal-tab-bar">
+  <a href="javascript:void(0)" id="cal-tb-home" class="cal-tb-item">
+    <span style="font-size:1.25rem;">🏠</span>
+    <span>首頁</span>
+  </a>
+  <a href="javascript:void(0)" id="cal-tb-ad" class="cal-tb-item">
+    <span style="font-size:1.25rem;">📝</span>
+    <span>廣告</span>
+  </a>
+  <a href="javascript:void(0)" id="cal-tb-library" class="cal-tb-item">
+    <span style="font-size:1.25rem;">📁</span>
+    <span>物件庫</span>
+  </a>
+  <a href="javascript:void(0)" id="cal-tb-buyer" class="cal-tb-item">
+    <span style="font-size:1.25rem;">👥</span>
+    <span>買方</span>
+  </a>
+  <a href="javascript:void(0)" id="cal-tb-survey" class="cal-tb-item">
+    <span style="font-size:1.25rem;">📍</span>
+    <span>周邊</span>
+  </a>
+  <a href="#" class="cal-tb-item cal-tb-active">
+    <span style="font-size:1.25rem;">📅</span>
+    <span>行事曆</span>
+  </a>
+</nav>
+
+</div><!-- /#main-wrap -->
+</body>
+</html>
