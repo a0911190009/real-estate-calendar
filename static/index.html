@@ -9,6 +9,7 @@
 <style>
 /* ── 全域重設與 CSS 變數 ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; overflow: hidden; } /* 鎖定根元素，讓頁面不整體捲動 */
 
 /* ── 行事曆特有顏色（所有主題共用） ── */
 :root {
@@ -34,7 +35,8 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: var(--bg-p);
   color: var(--tx);
-  min-height: 100vh;
+  height: 100%;      /* 改：固定在視窗高度，不讓 body 向下延伸 */
+  overflow: hidden;  /* 改：捲動只在內部元素（#week-container）發生 */
   display: flex;
   flex-direction: column;
 }
