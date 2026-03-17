@@ -443,7 +443,7 @@ body {
   min-height: 0;
   display: none;         /* 預設隱藏，切換到週才顯示 */
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;      /* 捲動容器移到這層，讓 #week-header sticky 能固定 */
 }
 #week-container.visible { display: flex; }
 
@@ -493,7 +493,7 @@ body {
 /* 週主體：時間軸 + 格線 */
 #week-body {
   flex: 1;
-  overflow-y: auto;
+  /* overflow-y 移到 #week-container，讓 header sticky 能正確固定 */
   position: relative;
 }
 #week-grid {
