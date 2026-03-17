@@ -125,6 +125,8 @@ body {
   border-bottom: 1px solid var(--bd);
   padding: 0 20px;
   flex-shrink: 0;
+  /* 凍結星期標題背景 */
+  background: var(--bg-p);
 }
 .weekday-label {
   text-align: center;
@@ -453,6 +455,9 @@ body {
   border-bottom: 1px solid var(--bd);
   flex-shrink: 0;
   padding: 0 8px 0 0;
+  /* 凍結標題列背景：防止向下捲動時下方內容透視 */
+  background: var(--bg-p);
+  z-index: 30;
 }
 .week-header-time { /* 左上角空白佔位 */ }
 .week-header-day {
@@ -500,6 +505,11 @@ body {
 .week-time-col {
   display: flex;
   flex-direction: column;
+  /* 凍結時間軸：向下捲動時保持固定在頂部 */
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg-p);
 }
 .week-time-slot {
   height: 60px;         /* 預設值，JS 會動態覆蓋 */
