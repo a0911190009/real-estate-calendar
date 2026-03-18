@@ -792,6 +792,17 @@ body {
 .tp-mode-btn{flex:1;padding:7px 4px;border-radius:7px;border:1px solid var(--bd);background:none;color:var(--txs);font-size:0.74rem;cursor:pointer;transition:all 0.15s;}
 .tp-mode-btn.active{background:var(--ac);color:var(--act);border-color:var(--ac);}
 .tp-section{font-size:0.68rem;font-weight:600;color:var(--txm);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;margin-top:14px;}
+
+/* ── 頂部三列收摺動畫（向下捲自動隱藏） ── */
+#header-wrap {
+  overflow: hidden;
+  flex-shrink: 0;
+  max-height: 200px; /* 三列最大高度 */
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+body.cal-header-collapsed #header-wrap {
+  max-height: 0; /* 收摺到看不見 */
+}
 </style>
 </head>
 <body data-theme="navy-dark">
@@ -896,6 +907,9 @@ body {
 <!-- ── 主內容包裝（Sidebar 右側） ── -->
 <div id="main-wrap">
 
+<!-- ── 頂部三列（可自動收摺）── -->
+<div id="header-wrap">
+
 <!-- ── 頂部工具列 ── -->
 <div id="topbar">
   <h1>📅 業務行事曆</h1>
@@ -978,6 +992,7 @@ body {
     <button class="view-btn active" id="view-week" onclick="switchView('week')">週</button>
   </div>
 </div>
+</div><!-- /#header-wrap -->
 
 <!-- ── 月檢視 ── -->
 <div id="cal-container">
@@ -1278,6 +1293,10 @@ function getMonday(d) {
 }
 
 /** 切換月/週檢視 */
+/* 頂部收摺：追蹤上次捲動位置 */
+let _headerLastScrollY = 0;
+let _headerScrollListener = null;
+
 function switchView(view) {
   currentView = view;
   document.getElementById('view-month').classList.toggle('active', view === 'month');
@@ -1290,6 +1309,7 @@ function switchView(view) {
   // Google 同步按鈕（含說明）只在週視圖顯示
   const syncWrap = document.getElementById('sync-google-wrap');
   if (syncWrap) syncWrap.style.display = view === 'week' ? 'flex' : 'none';
+
   if (view === 'week') {
     // 切到週時顯示當週（以今天為基準）
     currentWeekMonday = getMonday(new Date());
@@ -1298,7 +1318,29 @@ function switchView(view) {
       renderWeek();
       scrollToNow();
     });
+    // 初始化頂部自動收摺（向下捲隱藏，向上捲顯示）
+    const weekContainer = document.getElementById('week-container');
+    if (weekContainer && !_headerScrollListener) {
+      _headerLastScrollY = 0;
+      _headerScrollListener = () => {
+        const y = weekContainer.scrollTop;
+        if (y > _headerLastScrollY && y > 60) {
+          document.body.classList.add('cal-header-collapsed');    /* 向下捲：隱藏 */
+        } else if (y < _headerLastScrollY) {
+          document.body.classList.remove('cal-header-collapsed'); /* 向上捲：顯示 */
+        }
+        _headerLastScrollY = y;
+      };
+      weekContainer.addEventListener('scroll', _headerScrollListener);
+    }
   } else {
+    // 切回月視圖：展開頂部、移除監聽
+    document.body.classList.remove('cal-header-collapsed');
+    const weekContainer = document.getElementById('week-container');
+    if (weekContainer && _headerScrollListener) {
+      weekContainer.removeEventListener('scroll', _headerScrollListener);
+      _headerScrollListener = null;
+    }
     renderCalendar();
     loadEvents();
   }
