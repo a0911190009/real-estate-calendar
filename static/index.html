@@ -552,7 +552,7 @@ body {
 /* 週檢視行程區塊 */
 .week-event {
   position: absolute;
-  left: 3px; right: 3px;
+  left: 3px; right: 28%; /* 右邊留 28% 空白，讓同時段可點擊新增行程 */
   border-radius: 5px;
   padding: 3px 6px 10px 6px;
   font-size: 0.72rem;
@@ -793,6 +793,92 @@ body {
 .tp-mode-btn{flex:1;padding:7px 4px;border-radius:7px;border:1px solid var(--bd);background:none;color:var(--txs);font-size:0.74rem;cursor:pointer;transition:all 0.15s;}
 .tp-mode-btn.active{background:var(--ac);color:var(--act);border-color:var(--ac);}
 .tp-section{font-size:0.68rem;font-weight:600;color:var(--txm);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;margin-top:14px;}
+
+/* ── 行程快捷卡片（左鍵點擊彈出） ── */
+#event-popup {
+  display: none;
+  position: fixed;
+  z-index: 500;
+  background: var(--bg-s);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  box-shadow: var(--sh);
+  padding: 14px 16px;
+  min-width: 220px;
+  max-width: 280px;
+}
+.ep-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.ep-dot {
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ep-title {
+  flex: 1;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--tx);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ep-close {
+  background: none; border: none;
+  cursor: pointer; color: var(--txs);
+  font-size: 1.1rem; line-height: 1;
+  padding: 2px 4px;
+}
+.ep-time {
+  font-size: 0.78rem;
+  color: var(--txs);
+  margin-bottom: 12px;
+  padding-left: 19px; /* 對齊圓點後的標題 */
+}
+.ep-actions { display: flex; gap: 8px; }
+.ep-btn {
+  flex: 1;
+  padding: 7px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--bd);
+  background: none;
+  color: var(--tx);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background .15s;
+}
+.ep-btn:hover { background: var(--bg-t); }
+.ep-btn-delete { color: var(--dg); border-color: rgba(248,113,113,.4); }
+.ep-btn-delete:hover { background: var(--dgb); }
+
+/* ── 右鍵 / 長按快速選單 ── */
+#context-menu {
+  display: none;
+  position: fixed;
+  z-index: 600;
+  background: var(--bg-s);
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  box-shadow: var(--sh);
+  overflow: hidden;
+  min-width: 140px;
+}
+#context-menu button {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  color: var(--dg);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+}
+#context-menu button:hover { background: var(--dgb); }
 
 /* ── 頂部三列收摺動畫（向下捲自動隱藏） ── */
 #header-wrap {
@@ -1589,12 +1675,30 @@ function renderWeek() {
         startResizeDrag(e, block, ev, col);
       });
       block.appendChild(resizeHandle);
-      // 點擊開啟（沒有拖曳時才觸發）
+      // 左鍵點擊 → 拖曳或開快捷卡片
       block.addEventListener('mousedown', (e) => {
         if (e.target === resizeHandle || resizeHandle.contains(e.target)) return;
         e.stopPropagation();
         startMoveDrag(e, block, ev, wgrid, mon);
       });
+      // 右鍵 → 快速選單（含刪除）
+      block.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeEventPopup();
+        openContextMenu(ev, e.clientX, e.clientY);
+      });
+      // 長按（手機）→ 快速選單
+      let _longPressTimer = null;
+      block.addEventListener('touchstart', (e) => {
+        _longPressTimer = setTimeout(() => {
+          const t = e.touches[0];
+          closeEventPopup();
+          openContextMenu(ev, t.clientX, t.clientY);
+        }, 600);
+      }, { passive: true });
+      block.addEventListener('touchend',   () => clearTimeout(_longPressTimer));
+      block.addEventListener('touchmove',  () => clearTimeout(_longPressTimer));
       col.appendChild(block);
     });
 
@@ -1751,10 +1855,10 @@ function startMoveDrag(e, block, ev, wgrid, weekMon) {
     document.removeEventListener('mouseup', onUp);
 
     if (!moved) {
-      // 沒有移動 → 視為點擊，開啟 side panel
+      // 沒有移動 → 視為點擊，開啟快捷卡片
       block.classList.remove('drag-placeholder');
       if (ghost.parentElement) ghost.parentElement.removeChild(ghost);
-      openSidePanel(ev.start_dt.slice(0, 10), ev.id);
+      openEventPopup(ev, ue.clientX, ue.clientY);
       return;
     }
 
@@ -2382,6 +2486,90 @@ async function editEvent(id) {
 }
 
 // ══════════════════════════════════════════
+//  行程快捷卡片（左鍵點擊彈出）
+// ══════════════════════════════════════════
+let _popupEvId = null;  // 目前 popup 顯示的行程 ID
+let _contextEvId = null; // 目前右鍵選單的行程 ID
+
+function openEventPopup(ev, clientX, clientY) {
+  _popupEvId = ev.id;
+  const typeColors = { commission: '#f59e0b', showing: '#10b981', contract: '#8b5cf6' };
+  document.getElementById('ep-dot').style.background = typeColors[ev.type] || '#888';
+  document.getElementById('ep-title').textContent = ev.title;
+  const s = (ev.start_dt || '').slice(11, 16);
+  const e2 = (ev.end_dt || '').slice(11, 16);
+  const d = (ev.start_dt || '').slice(0, 10);
+  document.getElementById('ep-time').textContent = `${d}　${s} – ${e2}`;
+
+  const popup = document.getElementById('event-popup');
+  popup.style.display = 'block';
+  /* 定位：避免超出視窗邊緣 */
+  const pw = 280, ph = 120;
+  let x = clientX + 10, y = clientY + 10;
+  if (x + pw > window.innerWidth)  x = clientX - pw - 10;
+  if (y + ph > window.innerHeight) y = clientY - ph - 10;
+  popup.style.left = x + 'px';
+  popup.style.top  = y + 'px';
+}
+
+function closeEventPopup() {
+  document.getElementById('event-popup').style.display = 'none';
+  _popupEvId = null;
+}
+
+function editFromPopup() {
+  if (!_popupEvId) return;
+  const id = _popupEvId;
+  closeEventPopup();
+  editEvent(id);  // 呼叫既有的編輯函數
+}
+
+function deleteFromPopup() {
+  if (!_popupEvId) return;
+  const id = _popupEvId;
+  closeEventPopup();
+  deleteEvent(id);
+}
+
+function openContextMenu(ev, clientX, clientY) {
+  _contextEvId = ev.id;
+  const menu = document.getElementById('context-menu');
+  menu.style.display = 'block';
+  const mw = 160, mh = 50;
+  let x = clientX, y = clientY;
+  if (x + mw > window.innerWidth)  x = window.innerWidth - mw - 8;
+  if (y + mh > window.innerHeight) y = window.innerHeight - mh - 8;
+  menu.style.left = x + 'px';
+  menu.style.top  = y + 'px';
+}
+
+function contextDeleteEvent() {
+  if (!_contextEvId) return;
+  const id = _contextEvId;
+  document.getElementById('context-menu').style.display = 'none';
+  _contextEvId = null;
+  deleteEvent(id);
+}
+
+/* 點擊外部關閉 popup 和 context-menu */
+document.addEventListener('click', (e) => {
+  const popup = document.getElementById('event-popup');
+  const menu  = document.getElementById('context-menu');
+  if (popup && !popup.contains(e.target)) closeEventPopup();
+  if (menu  && !menu.contains(e.target)) {
+    menu.style.display = 'none';
+    _contextEvId = null;
+  }
+});
+document.addEventListener('contextmenu', (e) => {
+  /* 若不是行程方塊觸發，就關閉選單 */
+  if (!e.target.closest('.week-event')) {
+    document.getElementById('context-menu').style.display = 'none';
+    _contextEvId = null;
+  }
+});
+
+// ══════════════════════════════════════════
 //  刪除行程：確認後送出 DELETE，並更新畫面
 // ══════════════════════════════════════════
 async function deleteEvent(id) {
@@ -2522,6 +2710,25 @@ document.addEventListener('keydown', e => {
 </nav>
 
 </div><!-- /#main-wrap -->
+
+<!-- ── 行程快捷卡片 ── -->
+<div id="event-popup">
+  <div class="ep-header">
+    <span class="ep-dot" id="ep-dot"></span>
+    <span class="ep-title" id="ep-title"></span>
+    <button class="ep-close" onclick="closeEventPopup()">✕</button>
+  </div>
+  <div class="ep-time" id="ep-time"></div>
+  <div class="ep-actions">
+    <button class="ep-btn" onclick="editFromPopup()">✏️ 編輯</button>
+    <button class="ep-btn ep-btn-delete" onclick="deleteFromPopup()">🗑️ 刪除</button>
+  </div>
+</div>
+
+<!-- ── 右鍵 / 長按快速選單 ── -->
+<div id="context-menu">
+  <button onclick="contextDeleteEvent()">🗑️ 刪除行程</button>
+</div>
 
 <script>
 // ══ 主題同步系統（與 Portal/AD/Buyer/Survey 一致） ══
