@@ -1325,9 +1325,12 @@ function switchView(view) {
       _headerLastScrollY = 0;
       _headerScrollListener = () => {
         const y = weekContainer.scrollTop;
-        if (y > _headerLastScrollY && y > 60) {
+        const delta = y - _headerLastScrollY;
+        /* 小於 8px 的抖動忽略（防止 iOS 慣性捲動閃爍） */
+        if (Math.abs(delta) < 8) return;
+        if (delta > 0 && y > 60) {
           document.body.classList.add('cal-header-collapsed');    /* 向下捲：隱藏 */
-        } else if (y < _headerLastScrollY) {
+        } else if (delta < 0) {
           document.body.classList.remove('cal-header-collapsed'); /* 向上捲：顯示 */
         }
         _headerLastScrollY = y;
