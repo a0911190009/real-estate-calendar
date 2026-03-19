@@ -2493,8 +2493,10 @@ async function editEvent(id) {
 // ══════════════════════════════════════════
 let _popupEvId = null;  // 目前 popup 顯示的行程 ID
 let _contextEvId = null; // 目前右鍵選單的行程 ID
+let _ignoreNextClose = false; // 開啟 popup 後，忽略緊接而來的 click 事件
 
 function openEventPopup(ev, clientX, clientY) {
+  _ignoreNextClose = true; /* 防止緊接著的 click 事件立刻關掉 popup */
   _popupEvId = ev.id;
   const typeColors = { commission: '#f59e0b', showing: '#10b981', contract: '#8b5cf6' };
   document.getElementById('ep-dot').style.background = typeColors[ev.type] || '#888';
@@ -2556,6 +2558,8 @@ function contextDeleteEvent() {
 
 /* 點擊外部關閉 popup 和 context-menu */
 document.addEventListener('click', (e) => {
+  /* 剛開啟 popup 時，忽略這一次 click（避免立刻關掉） */
+  if (_ignoreNextClose) { _ignoreNextClose = false; return; }
   const popup = document.getElementById('event-popup');
   const menu  = document.getElementById('context-menu');
   if (popup && !popup.contains(e.target)) closeEventPopup();
