@@ -1684,6 +1684,13 @@ function renderWeek() {
         e.stopPropagation();
         startMoveDrag(e, block, ev, wgrid, mon);
       });
+      // 左鍵點擊 → 彈出快捷卡片（拖曳後的 click 由 _isDragging 攔截）
+      block.addEventListener('click', (e) => {
+        if (_isDragging) return;
+        if (e.target === resizeHandle || resizeHandle.contains(e.target)) return;
+        e.stopPropagation();
+        openEventPopup(ev, e.clientX, e.clientY);
+      });
       // 右鍵 → 快速選單（含刪除）
       block.addEventListener('contextmenu', (e) => {
         e.preventDefault();
@@ -1858,10 +1865,9 @@ function startMoveDrag(e, block, ev, wgrid, weekMon) {
     document.removeEventListener('mouseup', onUp);
 
     if (!moved) {
-      // 沒有移動 → 視為點擊，開啟快捷卡片
+      // 沒有移動 → 清理 ghost，click 事件會由 block 的 click handler 處理
       block.classList.remove('drag-placeholder');
       if (ghost.parentElement) ghost.parentElement.removeChild(ghost);
-      openEventPopup(ev, ue.clientX, ue.clientY);
       return;
     }
 
