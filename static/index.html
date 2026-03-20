@@ -2626,11 +2626,13 @@ function showToast(msg, isError = false) {
   _toastTimer = setTimeout(() => { el.className = ''; }, 3500);
 }
 
-// 按 ESC 鍵快速關閉 Modal 和側欄
+// 按 ESC 鍵快速關閉 Modal、側欄、彈出卡片、右鍵選單
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeModal();
     closePanel();
+    closeEventPopup();
+    document.getElementById('context-menu').style.display = 'none';
   }
 });
 
