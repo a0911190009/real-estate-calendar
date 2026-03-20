@@ -1174,13 +1174,13 @@ body.cal-header-collapsed #header-wrap {
 
 <!-- ── 週檢視 ── -->
 <div id="week-container">
-  <!-- 週標題（7 天日期欄） -->
-  <div id="week-header">
-    <div class="week-header-time"></div>
-    <!-- JS 動態填入 7 個 .week-header-day -->
-  </div>
-  <!-- 週主體（時間軸 + 行程） -->
+  <!-- 週主體（捲動容器）；week-header 在內用 sticky 固定，確保寬度與格線一致 -->
   <div id="week-body">
+    <!-- 週標題（7 天日期欄），sticky 固定在 week-body 頂部 -->
+    <div id="week-header">
+      <div class="week-header-time"></div>
+      <!-- JS 動態填入 7 個 .week-header-day -->
+    </div>
     <div id="week-grid">
       <!-- JS 動態填入 -->
     </div>
