@@ -450,15 +450,15 @@ body {
 }
 #week-container.visible { display: flex; }
 
-/* 週頂部：日期欄標題 */
+/* 週頂部：日期欄標題（sticky 在 week-body 捲動容器頂部，寬度與格線完全一致） */
 #week-header {
   display: grid;
-  /* 第一欄是時間軸寬度，後面 7 欄是每天 */
   grid-template-columns: 52px repeat(7, 1fr);
   border-bottom: 1px solid var(--bd);
   padding: 0 8px 0 0;
   background: var(--bg-p);
-  flex-shrink: 0;        /* 不壓縮，自然在 week-body 上方不捲動 */
+  position: sticky;
+  top: 0;
   z-index: 30;
 }
 .week-header-time { /* 左上角空白佔位 */ }
@@ -490,12 +490,11 @@ body {
   background: rgba(59,130,246,.06);
 }
 
-/* 週主體：時間軸 + 格線（此為捲動容器） */
+/* 週主體：捲動容器（week-header 也在此內，用 sticky 固定，寬度完全一致） */
 #week-body {
   flex: 1;
-  min-height: 0;         /* flex 子元素縮小必要設定 */
-  overflow-y: auto;      /* 真正的捲動在這裡，header 在外不受影響 */
-  scrollbar-gutter: stable; /* 一直預留捲軸寬度，避免 header 與格線錯位 */
+  min-height: 0;
+  overflow-y: auto;
   position: relative;
 }
 #week-grid {
