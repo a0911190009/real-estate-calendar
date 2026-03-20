@@ -81,6 +81,9 @@ ADMIN_EMAILS    = [e.strip() for e in (os.environ.get("ADMIN_EMAILS") or "").spl
 SERVICE_KEY     = os.environ.get("SERVICE_KEY", "")
 SERVICE_API_KEY = os.environ.get("SERVICE_API_KEY", "") or SERVICE_KEY  # 統一用 SERVICE_API_KEY
 
+_APP_DIR = os.path.dirname(os.path.abspath(__file__))
+GENERAL_FEEDBACK_FILE = os.path.join(_APP_DIR, "general_feedback.json")
+
 
 def _verify_service_key():
     """驗證 X-Service-Key header。"""
@@ -100,6 +103,28 @@ GOOGLE_CAL_ID = os.environ.get("GOOGLE_CAL_ID", "primary")
 
 def _is_admin(email):
     return email in ADMIN_EMAILS
+
+
+def _load_general_feedback():
+    """讀取通用反饋列表"""
+    if os.path.exists(GENERAL_FEEDBACK_FILE):
+        try:
+            with open(GENERAL_FEEDBACK_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return []
+    return []
+
+
+def _atomic_write(fpath, data_str):
+    """原子寫入：先寫 .tmp，fsync 後再 os.replace，讀取時永遠是完整檔案。"""
+    os.makedirs(os.path.dirname(fpath), exist_ok=True)
+    tmp = fpath + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(data_str)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, fpath)
 
 
 VALID_THEME_STYLES = ["navy", "forest", "amber", "minimal", "rose", "oled"]
@@ -950,6 +975,32 @@ def api_sync_from_google():
 # ══════════════════════════════════════════
 #  前端頁面
 # ══════════════════════════════════════════
+
+@app.route("/api/general-feedback", methods=["GET"])
+def api_general_feedback_get():
+    """列出所有通用反饋"""
+    return jsonify(_load_general_feedback())
+
+
+@app.route("/api/general-feedback", methods=["POST"])
+def api_general_feedback():
+    """通用反饋"""
+    data = request.get_json() or {}
+    text = (data.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "請輸入意見內容"}), 400
+
+    entries = _load_general_feedback()
+    entries.append({
+        "text": text,
+        "category": data.get("category", ""),
+        "created_at": datetime.now().isoformat(),
+    })
+    data_str = json.dumps(entries, ensure_ascii=False, indent=2)
+    _atomic_write(GENERAL_FEEDBACK_FILE, data_str)
+
+    return jsonify({"ok": True, "total": len(entries)})
+
 
 @app.route("/")
 def index():
