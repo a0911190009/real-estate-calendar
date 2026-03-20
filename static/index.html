@@ -1816,26 +1816,28 @@ function startMoveDrag(e, block, ev, wgrid, weekMon) {
   const dayCols = Array.from(wgrid.querySelectorAll('.week-day-col'));
   const origColIndex = dayCols.indexOf(block.parentElement);
 
-  // 建立拖曳中的視覺複製（ghost）
-  const ghost = block.cloneNode(true);
-  ghost.style.opacity = '0.85';
-  ghost.style.pointerEvents = 'none';
-  ghost.style.zIndex = '200';
-  ghost.classList.add('dragging');
-  ghost.style.width = block.offsetWidth + 'px';
-  ghost.style.left = block.style.left;
-  ghost.style.right = block.style.right;
-
-  // 原本位置顯示佔位虛線框
-  block.classList.add('drag-placeholder');
-
+  // ghost 和 drag-placeholder 延後到確認移動後才建立（避免點擊時 pointer-events: none 穿透）
+  let ghost = null;
   let currentCol = block.parentElement;
-  currentCol.appendChild(ghost);
 
   const onMove = (me) => {
     const dy = me.clientY - startY;
     const dx = me.clientX - startX;
     if (!moved && Math.abs(dy) < 5 && Math.abs(dx) < 5) return;
+
+    // 確認移動後才建立 ghost 和 drag-placeholder
+    if (!moved) {
+      ghost = block.cloneNode(true);
+      ghost.style.opacity = '0.85';
+      ghost.style.pointerEvents = 'none';
+      ghost.style.zIndex = '200';
+      ghost.classList.add('dragging');
+      ghost.style.width = block.offsetWidth + 'px';
+      ghost.style.left = block.style.left;
+      ghost.style.right = block.style.right;
+      block.classList.add('drag-placeholder');
+      currentCol.appendChild(ghost);
+    }
     moved = true;
 
     // 計算新的時間（Y軸），對齊 15 分鐘
