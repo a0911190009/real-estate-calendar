@@ -460,6 +460,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 30;
+  will-change: transform;  /* 強制 GPU 合成層，防止快速捲動時閃爍 */
 }
 .week-header-time { /* 左上角空白佔位 */ }
 .week-header-day {
