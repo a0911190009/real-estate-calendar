@@ -450,19 +450,16 @@ body {
 }
 #week-container.visible { display: flex; }
 
-/* 週頂部：日期欄標題（sticky 在 week-body 捲動容器頂部，寬度與格線完全一致） */
+/* 週頂部：日期欄標題（JS 手動 translateY 鎖定，比 CSS sticky 更穩定） */
 #week-header {
   display: grid;
   grid-template-columns: 52px repeat(7, 1fr);
   border-bottom: 1px solid var(--bd);
   padding: 0 8px 0 0;
   background: var(--bg-p);
-  position: sticky;
-  top: 0;
+  position: relative;            /* 不用 sticky，由 JS translateY 控制 */
   z-index: 30;
-  will-change: transform;        /* 強制 GPU 合成層 */
-  transform: translateZ(0);      /* 雙保險：明確觸發硬體加速 */
-  backface-visibility: hidden;   /* 防止非必要重繪 */
+  will-change: transform;        /* 告知瀏覽器此元素會被 transform 變換 */
 }
 .week-header-time { /* 左上角空白佔位 */ }
 .week-header-day {
@@ -1488,8 +1485,13 @@ function switchView(view) {
       _headerLastScrollY = 0;
       _headerScrollListener = () => {
         const y = weekBody.scrollTop;
+
+        /* JS 手動鎖定日期列：translateY 抵消捲動偏移，比 CSS sticky 更穩定 */
+        const wh = document.getElementById('week-header');
+        if (wh) wh.style.transform = `translateY(${y}px)`;
+
+        /* 自動收摺頂部（8px deadzone 防止慣性捲動誤觸） */
         const delta = y - _headerLastScrollY;
-        /* 小於 8px 的抖動忽略（防止 iOS 慣性捲動閃爍） */
         if (Math.abs(delta) < 8) return;
         if (delta > 0 && y > 60) {
           document.body.classList.add('cal-header-collapsed');    /* 向下捲：隱藏 */
@@ -1498,7 +1500,7 @@ function switchView(view) {
         }
         _headerLastScrollY = y;
       };
-      weekBody.addEventListener('scroll', _headerScrollListener);
+      weekBody.addEventListener('scroll', _headerScrollListener, { passive: true });
     }
   } else {
     // 切回月視圖：展開頂部、移除監聽
