@@ -460,7 +460,9 @@ body {
   position: sticky;
   top: 0;
   z-index: 30;
-  will-change: transform;  /* 強制 GPU 合成層，防止快速捲動時閃爍 */
+  will-change: transform;        /* 強制 GPU 合成層 */
+  transform: translateZ(0);      /* 雙保險：明確觸發硬體加速 */
+  backface-visibility: hidden;   /* 防止非必要重繪 */
 }
 .week-header-time { /* 左上角空白佔位 */ }
 .week-header-day {
@@ -496,6 +498,7 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* iOS 慣性捲動 GPU 加速 */
   position: relative;
 }
 #week-grid {
