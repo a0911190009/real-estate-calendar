@@ -509,11 +509,7 @@ body {
 .week-time-col {
   display: flex;
   flex-direction: column;
-  /* 凍結時間軸：向下捲動時保持固定在頂部 */
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: var(--bg-p);
+  /* 隨內容正常捲動，不用 sticky（避免時間標籤與格線錯位） */
 }
 .week-time-slot {
   height: 60px;         /* 預設值，JS 會動態覆蓋 */
@@ -1793,7 +1789,7 @@ function renderWeek() {
       if (_isDragging) return;      // 剛完成拖曳，忽略這個 click
       if (e.target !== col) return; // 點到行程 block 也忽略
       const rect = col.getBoundingClientRect();
-      const y = e.clientY - rect.top + document.getElementById('week-body').scrollTop;
+      const y = e.clientY - rect.top; /* rect 已是 viewport 座標，不需再加 scrollTop（否則雙重計算） */
       const h = Math.floor(y / hourPx);
       const hh = String(Math.min(h, 23)).padStart(2, '0');
       const dtStr = `${ds}T${hh}:00`;
