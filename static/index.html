@@ -17,6 +17,7 @@ html { height: 100%; overflow: hidden; } /* 鎖定根元素，讓頁面不整體
   --commission:#f59e0b;
   --showing:   #10b981;
   --contract:  #8b5cf6;
+  --other:     #6b7280;
   --radius:    10px;
 }
 /* ── 多主題 CSS 變數（與 Portal/AD/Buyer/Survey 完全一致） ── */
@@ -201,6 +202,7 @@ body {
 .chip-commission { background: rgba(245,158,11,.25); color: #fbbf24; border-left: 3px solid var(--commission); }
 .chip-showing    { background: rgba(16,185,129,.2); color: #34d399; border-left: 3px solid var(--showing); }
 .chip-contract   { background: rgba(139,92,246,.25); color: #a78bfa; border-left: 3px solid var(--contract); }
+.chip-other      { background: rgba(107,114,128,.2); color: #9ca3af; border-left: 3px solid var(--other); }
 .more-events { font-size: 0.7rem; color: var(--txs); padding: 1px 4px; }
 
 /* ── 行程列表側欄（點日期後顯示） ── */
@@ -247,10 +249,12 @@ body {
 .side-event-card.commission { border-left-color: var(--commission); }
 .side-event-card.showing    { border-left-color: var(--showing); }
 .side-event-card.contract   { border-left-color: var(--contract); }
+.side-event-card.other      { border-left-color: var(--other); }
 .sev-type { font-size: 0.72rem; font-weight: 700; letter-spacing: .06em; margin-bottom: 4px; }
 .sev-type.commission { color: var(--commission); }
 .sev-type.showing    { color: var(--showing); }
 .sev-type.contract   { color: var(--contract); }
+.sev-type.other      { color: var(--other); }
 .sev-title { font-weight: 600; margin-bottom: 6px; }
 .sev-meta { font-size: 0.8rem; color: var(--txs); line-height: 1.6; }
 .sev-actions { margin-top: 8px; display: flex; gap: 8px; }
@@ -319,6 +323,7 @@ body {
 .type-btn.active-commission { border-color: var(--commission); color: var(--commission); background: rgba(245,158,11,.1); }
 .type-btn.active-showing    { border-color: var(--showing); color: var(--showing); background: rgba(16,185,129,.1); }
 .type-btn.active-contract   { border-color: var(--contract); color: var(--contract); background: rgba(139,92,246,.1); }
+.type-btn.active-other      { border-color: var(--other); color: var(--other); background: rgba(107,114,128,.1); }
 
 /* ── 表單 ── */
 .form-group { margin-bottom: 14px; }
@@ -576,6 +581,7 @@ body {
 .week-event.commission { background: rgba(245,158,11,.82); color: #fff; border-left: 3px solid #b45309; }
 .week-event.showing    { background: rgba(16,185,129,.82); color: #fff; border-left: 3px solid #065f46; }
 .week-event.contract   { background: rgba(139,92,246,.82); color: #fff; border-left: 3px solid #5b21b6; }
+.week-event.other      { background: rgba(107,114,128,.82); color: #fff; border-left: 3px solid #374151; }
 /* resize handle：行程底部拖曳調整結束時間 */
 .week-event-resize {
   position: absolute;
@@ -1081,6 +1087,7 @@ body.cal-header-collapsed #header-wrap {
   <span><span class="legend-dot" style="background:var(--commission)"></span> 簽委託約</span>
   <span><span class="legend-dot" style="background:var(--showing)"></span> 帶看</span>
   <span><span class="legend-dot" style="background:var(--contract)"></span> 簽買賣契約</span>
+  <span><span class="legend-dot" style="background:var(--other)"></span> 其他</span>
 </div>
 
 <!-- ── 月/週 共用導航列 ── -->
@@ -1213,6 +1220,9 @@ body.cal-header-collapsed #header-wrap {
         </button>
         <button class="type-btn" id="type-contract" onclick="setType('contract')">
           🤝 簽買賣契約
+        </button>
+        <button class="type-btn" id="type-other" onclick="setType('other')">
+          📌 其他
         </button>
       </div>
 
@@ -1615,7 +1625,7 @@ function renderCalendar() {
       const chip = document.createElement('div');
       chip.className = `event-chip chip-${ev.type}`;
       const timeStr = (ev.start_dt || '').slice(11, 16);
-      const label = { commission: '📋', showing: '🏠', contract: '🤝' }[ev.type] || '';
+      const label = { commission: '📋', showing: '🏠', contract: '🤝', other: '📌' }[ev.type] || '';
       chip.textContent = `${label} ${timeStr ? timeStr + ' ' : ''}${ev.title}`;
       chip.title = ev.title;
       chip.onclick = (e) => { e.stopPropagation(); openSidePanel(dateStr, ev.id); };
@@ -1736,7 +1746,7 @@ function renderWeek() {
       block.style.height = `${dur * pxPerMin}px`;
       block.dataset.evId = ev.id;
       block.dataset.date = ds;
-      const label = { commission: '📋', showing: '🏠', contract: '🤝' }[ev.type] || '';
+      const label = { commission: '📋', showing: '🏠', contract: '🤝', other: '📌' }[ev.type] || '';
       const timeStr = (ev.start_dt || '').slice(11, 16);
       const textNode = document.createElement('span');
       textNode.textContent = `${label} ${timeStr} ${ev.title}`;
@@ -2185,7 +2195,7 @@ function openSidePanel(dateStr, highlightId) {
       card.className = `side-event-card ${ev.type}`;
       if (highlightId && ev.id === highlightId) card.style.borderColor = 'var(--ac)';
 
-      const typeLabel = { commission: '簽委託約', showing: '帶看', contract: '簽買賣契約' };
+      const typeLabel = { commission: '簽委託約', showing: '帶看', contract: '簽買賣契約', other: '其他' };
       const timeStr = (ev.start_dt || '').slice(11, 16);
       const endStr  = (ev.end_dt || '').slice(11, 16);
 
@@ -2283,14 +2293,15 @@ function clearForm() {
 function setType(type) {
   selectedType = type;
 
-  // 更新三個類型按鈕的 CSS 樣式（只有選中的那個加上顏色邊框）
-  ['commission','showing','contract'].forEach(t => {
+  // 更新四個類型按鈕的 CSS 樣式（只有選中的那個加上顏色邊框）
+  ['commission','showing','contract','other'].forEach(t => {
     const btn = document.getElementById('type-' + t);
     btn.className = 'type-btn' + (t === type ? ` active-${t}` : '');
   });
 
   // 物件欄位：三種情境都需要
-  document.getElementById('field-prop').classList.add('visible');
+  // 物件欄位：其他行程不顯示
+  document.getElementById('field-prop').classList.toggle('visible', type !== 'other');
 
   // 賣方欄位：簽委託 / 簽買賣 才顯示
   const showSeller = type === 'commission' || type === 'contract';
@@ -2465,7 +2476,7 @@ async function saveEvent() {
 
   // 前端驗證：必填欄位檢查（後端也會再驗一次，這裡是讓使用者即時看到錯誤）
   if (!start) { showToast('請填寫開始時間', true); return; }
-  if (!prop)  { showToast('請填寫物件名稱', true); return; }
+  if (selectedType !== 'other' && !prop) { showToast('請填寫物件名稱', true); return; }
   if ((selectedType === 'commission' || selectedType === 'contract') && !seller) {
     showToast('請填寫賣方姓名', true); return;
   }
@@ -2578,7 +2589,7 @@ let _ignoreNextClose = false; // 開啟 popup 後，忽略緊接而來的 click 
 function openEventPopup(ev, clientX, clientY) {
   _ignoreNextClose = true; /* 防止緊接著的 click 事件立刻關掉 popup */
   _popupEvId = ev.id;
-  const typeColors = { commission: '#f59e0b', showing: '#10b981', contract: '#8b5cf6' };
+  const typeColors = { commission: '#f59e0b', showing: '#10b981', contract: '#8b5cf6', other: '#6b7280' };
   document.getElementById('ep-dot').style.background = typeColors[ev.type] || '#888';
   document.getElementById('ep-title').textContent = ev.title;
   const s = (ev.start_dt || '').slice(11, 16);

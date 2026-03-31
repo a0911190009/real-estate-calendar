@@ -337,8 +337,8 @@ def api_events_create():
 
     data = request.get_json(silent=True) or {}
     event_type = (data.get("type") or "").strip()
-    if event_type not in ("commission", "showing", "contract"):
-        return jsonify({"error": "行程類型無效，需為 commission / showing / contract"}), 400
+    if event_type not in ("commission", "showing", "contract", "other"):
+        return jsonify({"error": "行程類型無效，需為 commission / showing / contract / other"}), 400
 
     start_dt = (data.get("start_dt") or "").strip()
     if not start_dt:
@@ -364,7 +364,7 @@ def api_events_create():
             return jsonify({"error": "簽買賣契約需填寫物件名稱"}), 400
 
     # 自動生成標題
-    type_label = {"commission": "簽委託約", "showing": "帶看", "contract": "簽買賣契約"}
+    type_label = {"commission": "簽委託約", "showing": "帶看", "contract": "簽買賣契約", "other": "其他行程"}
     auto_title = type_label[event_type]
     if event_type == "commission":
         auto_title += f"｜{data.get('prop_name', '')}（賣方：{data.get('seller_name', '')}）"
@@ -563,7 +563,7 @@ def api_events_create_for_agent():
     if not email:
         return jsonify({"error": "缺少 email"}), 400
     event_type = (data.get("type") or "showing").strip()
-    if event_type not in ("commission", "showing", "contract"):
+    if event_type not in ("commission", "showing", "contract", "other"):
         event_type = "showing"
     col = _events_col()
     if col is None:
@@ -575,7 +575,7 @@ def api_events_create_for_agent():
     # 自動產生標題
     title = data.get("title") or ""
     if not title:
-        type_map = {"showing": "帶看", "commission": "簽委託", "contract": "簽買賣"}
+        type_map = {"showing": "帶看", "commission": "簽委託", "contract": "簽買賣", "other": "其他"}
         label = type_map.get(event_type, "行程")
         buyer = data.get("buyer_name", "")
         prop  = data.get("prop_name", "")
@@ -731,7 +731,7 @@ def _build_gcal_body(event: dict) -> dict:
         else:
             return {"date": iso_str}
 
-    type_emoji = {"commission": "📋", "showing": "🏠", "contract": "🤝"}
+    type_emoji = {"commission": "📋", "showing": "🏠", "contract": "🤝", "other": "📌"}
     emoji = type_emoji.get(event.get("type", ""), "📅")
 
     description_lines = []
@@ -751,7 +751,7 @@ def _build_gcal_body(event: dict) -> dict:
         "description": "\n".join(description_lines),
         "start": to_gcal_time(start),
         "end": to_gcal_time(end),
-        "colorId": {"commission": "5", "showing": "2", "contract": "11"}.get(event.get("type", ""), "1"),
+        "colorId": {"commission": "5", "showing": "2", "contract": "11", "other": "8"}.get(event.get("type", ""), "1"),
     }
 
 
