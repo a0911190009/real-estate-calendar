@@ -1323,8 +1323,10 @@ let endTimeManuallySet = false;
 document.addEventListener('DOMContentLoaded', async () => {
   await loadMe();      // 取得登入者資訊顯示在右上角
   renderCalendar();    // 先畫月曆骨架（背景備用）
-  // 預設直接顯示週視圖（當週）
-  switchView('week');
+  // 若 URL 有 ?tab= 就切到指定視圖，否則預設週視圖
+  const _initView = new URLSearchParams(location.search).get('tab');
+  switchView(_initView === 'month' ? 'month' : 'week');
+  if (location.search) history.replaceState(null, '', location.pathname);
 
   // ── 開始時間變動 → 自動更新結束時間（智慧跟隨）──
   document.getElementById('f-start').addEventListener('change', function () {
