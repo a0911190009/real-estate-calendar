@@ -655,6 +655,16 @@ body {
 #app-sidebar nav a.active { background: var(--acs); }
 #app-sidebar nav a .sb-tooltip { position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%); background: var(--bg-s); color: var(--tx); border: 1px solid var(--bd); border-radius: 8px; padding: 5px 10px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
 #app-sidebar nav a:hover .sb-tooltip { opacity: 1; }
+.sb-fw{width:60px;height:60px;min-width:60px;min-height:60px;display:flex;align-items:center;justify-content:center;}
+.sb-fw.hidden{display:none!important;}
+.sb-fw>a{width:60px;height:60px;display:flex;align-items:center;justify-content:center;border-radius:14px;color:var(--txs);text-decoration:none;transition:background 0.15s;}
+.sb-fw>a img{width:36px;height:36px;object-fit:contain;}
+.sb-fw:hover>a{background:var(--bg-h);}
+.sb-flyout{position:fixed;background:var(--bg-s);border:1px solid var(--bd);border-radius:12px;padding:6px;min-width:150px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.15);display:none;}
+.sb-flyout-title{font-size:0.7rem;font-weight:700;color:var(--txm);padding:4px 8px 6px;letter-spacing:.03em;}
+.sb-flyout-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;text-decoration:none;color:var(--tx);font-size:0.8rem;font-weight:500;transition:background 0.12s;}
+.sb-flyout-item:hover{background:var(--bg-h);}
+.sb-flyout-item .fi-dot{width:6px;height:6px;border-radius:50%;background:var(--txm);flex-shrink:0;}
 
 /* ── Sidebar 使用者區塊（icon-only 版） ── */
 .sb-user {
@@ -1025,9 +1035,30 @@ body.cal-header-collapsed #header-wrap {
   </div>
   <nav>
     <a href="javascript:void(0)" id="sb-portal-home" class="hidden"><img src="/static/tool-reels.png" alt="" /><span class="sb-nav-text">工具首頁</span><span class="sb-tooltip">工具首頁</span></a>
-    <a href="javascript:void(0)" id="sb-ad" class="hidden"><img src="/static/tool-ad.png" alt="" /><span class="sb-nav-text">廣告文案</span><span class="sb-tooltip">廣告文案</span></a>
-    <a href="javascript:void(0)" id="sb-library" class="hidden"><img src="/static/tool-library.png" alt="" /><span class="sb-nav-text">物件庫</span><span class="sb-tooltip">物件庫</span></a>
-    <a href="javascript:void(0)" id="sb-buyer" class="hidden"><img src="/static/tool-buyer.png" alt="" /><span class="sb-nav-text">買方管理</span><span class="sb-tooltip">買方管理</span></a>
+    <div class="sb-fw hidden" id="sb-ad">
+      <a href="javascript:void(0)" id="sb-ad-link" target="tool-post"><img src="/static/tool-ad.png" alt="" /><span class="sb-tooltip">廣告文案</span></a>
+      <div class="sb-flyout"><div class="sb-flyout-title">廣告文案</div>
+        <a id="sb-ad-campaigns" href="#" target="tool-post" class="sb-flyout-item"><span class="fi-dot"></span>廣告活動</a>
+        <a id="sb-ad-photos" href="#" target="tool-post" class="sb-flyout-item"><span class="fi-dot"></span>物件照片</a>
+        <a id="sb-ad-showcase" href="#" target="tool-post" class="sb-flyout-item"><span class="fi-dot"></span>展示頁</a>
+      </div>
+    </div>
+    <div class="sb-fw hidden" id="sb-library">
+      <a href="javascript:void(0)" id="sb-library-link" target="tool-library"><img src="/static/tool-library.png" alt="" /><span class="sb-tooltip">物件庫</span></a>
+      <div class="sb-flyout"><div class="sb-flyout-title">物件庫</div>
+        <a id="sb-library-company" href="#" target="tool-library" class="sb-flyout-item"><span class="fi-dot"></span>公司物件</a>
+        <a id="sb-library-sellers" href="#" target="tool-library" class="sb-flyout-item"><span class="fi-dot"></span>準賣方</a>
+        <a id="sb-library-map" href="#" target="tool-library" class="sb-flyout-item"><span class="fi-dot"></span>地圖</a>
+      </div>
+    </div>
+    <div class="sb-fw hidden" id="sb-buyer">
+      <a href="javascript:void(0)" id="sb-buyer-link" target="tool-buyer"><img src="/static/tool-buyer.png" alt="" /><span class="sb-tooltip">買方管理</span></a>
+      <div class="sb-flyout"><div class="sb-flyout-title">買方管理</div>
+        <a id="sb-buyer-buyers" href="#" target="tool-buyer" class="sb-flyout-item"><span class="fi-dot"></span>買方需求</a>
+        <a id="sb-buyer-war" href="#" target="tool-buyer" class="sb-flyout-item"><span class="fi-dot"></span>戰況版</a>
+        <a id="sb-buyer-showings" href="#" target="tool-buyer" class="sb-flyout-item"><span class="fi-dot"></span>帶看紀錄</a>
+      </div>
+    </div>
     <a href="javascript:void(0)" id="sb-survey" class="hidden"><img src="/static/tool-survey.png" alt="" /><span class="sb-nav-text">周邊調查</span><span class="sb-tooltip">周邊調查</span></a>
     <a href="#" class="active"><img src="/static/tool-calendar.png" alt="" /><span class="sb-nav-text">業務行事曆</span><span class="sb-tooltip">業務行事曆</span></a>
     <a href="javascript:void(0)" id="sb-notes" class="hidden"><img src="/static/tool-doc.png" alt="" /><span class="sb-nav-text">記事本</span><span class="sb-tooltip">記事本</span></a>
@@ -2741,12 +2772,45 @@ document.addEventListener('keydown', e => {
       // Sidebar 連結
       var sbPortal = document.getElementById('sb-portal-home');
       if (sbPortal) { sbPortal.href = portalUrl; sbPortal.target = 'tool-portal'; sbPortal.classList.remove('hidden'); }
+      // 廣告文案 flyout
       var sbAd = document.getElementById('sb-ad');
-      if (sbAd) { sbAd.href = portalBase + '/api/enter/post'; sbAd.target = 'tool-post'; sbAd.classList.remove('hidden'); }
+      if (sbAd) {
+        sbAd.classList.remove('hidden');
+        var elAdLink = document.getElementById('sb-ad-link');
+        if (elAdLink) { elAdLink.href = portalBase + '/api/enter/post'; }
+        var elAdCampaigns = document.getElementById('sb-ad-campaigns');
+        if (elAdCampaigns) { elAdCampaigns.href = portalBase + '/api/enter/post?tab=campaigns'; }
+        var elAdPhotos = document.getElementById('sb-ad-photos');
+        if (elAdPhotos) { elAdPhotos.href = portalBase + '/api/enter/post?tab=photos'; }
+        var elAdShowcase = document.getElementById('sb-ad-showcase');
+        if (elAdShowcase) { elAdShowcase.href = portalBase + '/api/enter/post?tab=showcase'; }
+      }
+      // 物件庫 flyout
       var sbLib = document.getElementById('sb-library');
-      if (sbLib) { sbLib.href = portalBase + '/api/enter/library'; sbLib.target = 'tool-library'; sbLib.classList.remove('hidden'); }
+      if (sbLib) {
+        sbLib.classList.remove('hidden');
+        var elLibLink = document.getElementById('sb-library-link');
+        if (elLibLink) { elLibLink.href = portalBase + '/api/enter/library'; }
+        var elLibCompany = document.getElementById('sb-library-company');
+        if (elLibCompany) { elLibCompany.href = portalBase + '/api/enter/library?tab=company'; }
+        var elLibSellers = document.getElementById('sb-library-sellers');
+        if (elLibSellers) { elLibSellers.href = portalBase + '/api/enter/library?tab=sellers'; }
+        var elLibMap = document.getElementById('sb-library-map');
+        if (elLibMap) { elLibMap.href = portalBase + '/api/enter/library?tab=map'; }
+      }
+      // 買方管理 flyout
       var sbBuyer = document.getElementById('sb-buyer');
-      if (sbBuyer) { sbBuyer.href = portalBase + '/api/enter/buyer'; sbBuyer.target = 'tool-buyer'; sbBuyer.classList.remove('hidden'); }
+      if (sbBuyer) {
+        sbBuyer.classList.remove('hidden');
+        var elBuyerLink = document.getElementById('sb-buyer-link');
+        if (elBuyerLink) { elBuyerLink.href = portalBase + '/api/enter/buyer'; }
+        var elBuyerBuyers = document.getElementById('sb-buyer-buyers');
+        if (elBuyerBuyers) { elBuyerBuyers.href = portalBase + '/api/enter/buyer?tab=buyers'; }
+        var elBuyerWar = document.getElementById('sb-buyer-war');
+        if (elBuyerWar) { elBuyerWar.href = portalBase + '/api/enter/buyer?tab=war'; }
+        var elBuyerShowings = document.getElementById('sb-buyer-showings');
+        if (elBuyerShowings) { elBuyerShowings.href = portalBase + '/api/enter/buyer?tab=showings'; }
+      }
       var sbSurvey = document.getElementById('sb-survey');
       if (sbSurvey) { sbSurvey.href = portalBase + '/api/enter/survey'; sbSurvey.target = 'tool-survey'; sbSurvey.classList.remove('hidden'); }
       // Tab Bar 連結（新版 5 格：首頁｜物件庫｜廣告｜買方｜更多）
@@ -2769,6 +2833,39 @@ document.addEventListener('keydown', e => {
       if (moreNotes) { moreNotes.href = portalBase + '/notes'; moreNotes.target = 'tool-portal'; }
     })
     .catch(() => {});
+})();
+
+// ── Sidebar Flyout 次選單 ──
+(function() {
+  var _flyTimer = null;
+  function attachFlyout(wrapEl) {
+    if (!wrapEl) return;
+    var flyEl = wrapEl.querySelector('.sb-flyout');
+    if (!flyEl) return;
+    function showFly() {
+      clearTimeout(_flyTimer);
+      flyEl.style.display = 'block';
+      var r = wrapEl.getBoundingClientRect();
+      flyEl.style.left = (r.right + 6) + 'px';
+      flyEl.style.top  = r.top + 'px';
+      flyEl.style.pointerEvents = 'auto';
+      flyEl.style.opacity = '1';
+    }
+    function hideFly() {
+      _flyTimer = setTimeout(function() {
+        flyEl.style.opacity = '0';
+        flyEl.style.pointerEvents = 'none';
+        setTimeout(function() { flyEl.style.display = 'none'; }, 150);
+      }, 200);
+    }
+    wrapEl.addEventListener('mouseenter', showFly);
+    wrapEl.addEventListener('mouseleave', hideFly);
+    flyEl.addEventListener('mouseenter', function() { clearTimeout(_flyTimer); });
+    flyEl.addEventListener('mouseleave', hideFly);
+  }
+  ['sb-ad','sb-library','sb-buyer'].forEach(function(id) {
+    attachFlyout(document.getElementById(id));
+  });
 })();
 </script>
 
