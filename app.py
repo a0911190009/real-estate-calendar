@@ -334,6 +334,9 @@ def api_events_list():
         d["id"] = doc.id
         events.append(d)
 
+    # 記錄用戶載入了行事曆（只記第一次，有帶 start 參數才算主動查看）
+    if start_str:
+        log_event("calendar_view", user_id=email, detail={"start": start_str, "count": len(events)})
     return jsonify(events)
 
 
