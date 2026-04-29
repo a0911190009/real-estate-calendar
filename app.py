@@ -130,6 +130,25 @@ def _atomic_write(fpath, data_str):
 VALID_THEME_STYLES = ["navy", "forest", "amber", "minimal", "rose", "oled"]
 
 
+# ── LOG 工具函式 ──
+def log_event(event_type, user_id="", detail=None):
+    """記錄業務事件，輸出至 Cloud Logging（Cloud Run stdout 自動收集）。"""
+    print(json.dumps({
+        "time": datetime.now(timezone.utc).isoformat(),
+        "event": event_type,   # 事件名稱，例如 "calendar_add"
+        "user": user_id,
+        "detail": detail or {}
+    }, ensure_ascii=False), flush=True)
+
+
+@app.route("/api/client-log", methods=["POST"])
+def api_client_log():
+    """接收前端 JS 錯誤，記錄至 Cloud Logging。"""
+    data = request.get_json(silent=True) or {}
+    log_event("client_error", detail=data)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/theme", methods=["GET"])
 def api_theme_get():
     """取得目前全局外觀風格（跨工具共用 Firestore system_settings/theme）。"""
@@ -338,6 +357,7 @@ def api_events_create():
     email, err = _require_user()
     if err:
         return jsonify(err[0]), err[1]
+    log_event("calendar_event_create", user_id=email)
 
     data = request.get_json(silent=True) or {}
     event_type = (data.get("type") or "").strip()
