@@ -56,6 +56,11 @@ def _get_db():
 
 # ── Flask ──
 app = Flask(__name__)
+
+# 跨工具回饋系統
+from feedback_endpoint import bp as _feedback_bp
+app.register_blueprint(_feedback_bp)
+
 _secret = os.environ.get("FLASK_SECRET_KEY", "")
 if not _secret:
     logging.warning("FLASK_SECRET_KEY 未設定，使用預設 dev key，請盡快補上環境變數。")
