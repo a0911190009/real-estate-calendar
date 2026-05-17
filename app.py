@@ -82,6 +82,7 @@ def auto_login_dev():
 PORTAL_URL      = (os.environ.get("PORTAL_URL") or "").strip()
 LIBRARY_URL     = (os.environ.get("LIBRARY_URL") or "").strip()
 BUYER_URL       = (os.environ.get("BUYER_URL") or "").strip()
+PEOPLE_URL      = (os.environ.get("PEOPLE_URL") or "").strip()  # 人脈管理 URL（生日提醒用）
 ADMIN_EMAILS    = [e.strip() for e in (os.environ.get("ADMIN_EMAILS") or "").split(",") if e.strip()]
 SERVICE_KEY     = os.environ.get("SERVICE_KEY", "")
 SERVICE_API_KEY = os.environ.get("SERVICE_API_KEY", "") or SERVICE_KEY  # 統一用 SERVICE_API_KEY
@@ -282,6 +283,102 @@ def _events_col():
     return db.collection("calendar_events")
 
 
+def _parse_birthday_md(bday):
+    """把人脈管理的生日字串解析成 (month, day, birth_year or None)。
+
+    支援格式：YYYY-MM-DD / YYYY/MM/DD / MM-DD / MM/DD。
+    解析不出來回傳 None。
+    """
+    s = str(bday or "").strip().replace("/", "-")
+    parts = [p for p in s.split("-") if p != ""]
+    try:
+        if len(parts) >= 3:                       # YYYY-MM-DD
+            y, m, dd = int(parts[0]), int(parts[1]), int(parts[2])
+            birth_year = y if 1900 <= y <= 2100 else None
+            return (m, dd, birth_year)
+        if len(parts) == 2:                       # MM-DD（沒有年）
+            return (int(parts[0]), int(parts[1]), None)
+    except ValueError:
+        return None
+    return None
+
+
+def _build_birthday_events(email, start_dt, end_dt):
+    """跟「人脈管理」要有填生日的人脈，組成唯讀的生日提醒虛擬行程。
+
+    依使用者設定：每位客戶生日「前一天」+「當天」各一筆。
+    這些行程不存 Firestore、不推 Google 日曆，純提醒用。
+    任何錯誤都靜默回傳 []，不影響原本行程載入。
+    """
+    if not PEOPLE_URL:
+        return []
+    try:
+        headers = {}
+        if SERVICE_API_KEY:
+            headers["X-Service-Key"] = SERVICE_API_KEY
+        r = http_requests.get(
+            f"{PEOPLE_URL.rstrip('/')}/api/people/birthdays-for-calendar",
+            params={"email": email},
+            headers=headers,
+            timeout=5,
+        )
+        if not r.ok:
+            return []
+        people = (r.json() or {}).get("items", []) or []
+    except Exception as e:
+        logging.warning("birthday fetch error: %s", e)
+        return []
+
+    start_d = start_dt.date()
+    end_d   = end_dt.date()
+    events  = []
+
+    for p in people:
+        md = _parse_birthday_md(p.get("birthday"))
+        if not md:
+            continue
+        month, day, birth_year = md
+        name = (p.get("name") or "").strip() or "客戶"
+        pid  = p.get("id") or ""
+
+        # 查詢範圍可能跨年（如 12 月看到隔年 1 月），逐年產生
+        for y in range(start_d.year, end_d.year + 1):
+            try:
+                bdate = datetime(y, month, day).date()
+            except ValueError:
+                # 2/29 等不存在 → 退到當年 2/28
+                if month == 2 and day == 29:
+                    bdate = datetime(y, 2, 28).date()
+                else:
+                    continue
+            age = (y - birth_year) if birth_year else None
+            # ('eve' = 前一天提醒, 'day' = 生日當天)
+            for when, the_date in (("eve", bdate - timedelta(days=1)), ("day", bdate)):
+                if not (start_d <= the_date <= end_d):
+                    continue
+                ds = the_date.isoformat()
+                if when == "day":
+                    title = f"🎂 {name} 生日" + (f"（{age} 歲）" if age and age > 0 else "")
+                else:
+                    title = f"🎂 明天是 {name} 生日"
+                events.append({
+                    "id": f"bday-{pid}-{ds}-{when}",
+                    "type": "birthday",
+                    "is_birthday": True,
+                    "title": title,
+                    "start_dt": f"{ds}T00:00",
+                    "end_dt":   f"{ds}T23:59",
+                    "note": "來自人脈管理的生日提醒",
+                    # 給前端做「打電話 / LINE 祝賀」用
+                    "_person_id":   pid,
+                    "_person_name": name,
+                    "_phone":       (p.get("phone") or "").strip(),
+                    "_line_id":     (p.get("line_id") or "").strip(),
+                    "_when":        when,
+                })
+    return events
+
+
 @app.route("/api/events", methods=["GET"])
 def api_events_list():
     """
@@ -338,6 +435,12 @@ def api_events_list():
         d = doc.to_dict()
         d["id"] = doc.id
         events.append(d)
+
+    # 併入人脈管理的生日提醒（唯讀虛擬行程，不存 Firestore）
+    try:
+        events.extend(_build_birthday_events(email, start_dt, end_dt))
+    except Exception as e:
+        logging.warning("merge birthday events failed: %s", e)
 
     # 記錄用戶載入了行事曆（只記第一次，有帶 start 參數才算主動查看）
     if start_str:

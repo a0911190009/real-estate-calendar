@@ -18,6 +18,7 @@ html { height: 100%; overflow: hidden; } /* 鎖定根元素，讓頁面不整體
   --showing:   #10b981;
   --contract:  #8b5cf6;
   --other:     #6b7280;
+  --birthday:  #ec4899;
   --radius:    10px;
 }
 /* ── 多主題 CSS 變數（與 Portal/AD/Buyer/Survey 完全一致） ── */
@@ -203,6 +204,7 @@ body {
 .chip-showing    { background: rgba(16,185,129,.2); color: #34d399; border-left: 3px solid var(--showing); }
 .chip-contract   { background: rgba(139,92,246,.25); color: #a78bfa; border-left: 3px solid var(--contract); }
 .chip-other      { background: rgba(107,114,128,.2); color: #9ca3af; border-left: 3px solid var(--other); }
+.chip-birthday   { background: rgba(236,72,153,.2); color: #f472b6; border-left: 3px solid var(--birthday); }
 .more-events { font-size: 0.7rem; color: var(--txs); padding: 1px 4px; }
 
 /* ── 行程列表側欄（點日期後顯示） ── */
@@ -250,11 +252,13 @@ body {
 .side-event-card.showing    { border-left-color: var(--showing); }
 .side-event-card.contract   { border-left-color: var(--contract); }
 .side-event-card.other      { border-left-color: var(--other); }
+.side-event-card.birthday   { border-left-color: var(--birthday); }
 .sev-type { font-size: 0.72rem; font-weight: 700; letter-spacing: .06em; margin-bottom: 4px; }
 .sev-type.commission { color: var(--commission); }
 .sev-type.showing    { color: var(--showing); }
 .sev-type.contract   { color: var(--contract); }
 .sev-type.other      { color: var(--other); }
+.sev-type.birthday   { color: var(--birthday); }
 .sev-title { font-weight: 600; margin-bottom: 6px; }
 .sev-meta { font-size: 0.8rem; color: var(--txs); line-height: 1.6; }
 .sev-actions { margin-top: 8px; display: flex; gap: 8px; }
@@ -262,6 +266,7 @@ body {
   padding: 4px 10px; border-radius: 6px; font-size: 0.78rem;
   border: 1px solid var(--bd); background: transparent;
   color: var(--txs); cursor: pointer; transition: all .15s;
+  text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
 }
 .btn-sm:hover { background: var(--bg-s); color: var(--tx); }
 .btn-sm.danger:hover { border-color: var(--dg); color: var(--dg); }
@@ -582,6 +587,7 @@ body {
 .week-event.showing    { background: rgba(16,185,129,.82); color: #fff; border-left: 3px solid #065f46; }
 .week-event.contract   { background: rgba(139,92,246,.82); color: #fff; border-left: 3px solid #5b21b6; }
 .week-event.other      { background: rgba(107,114,128,.82); color: #fff; border-left: 3px solid #374151; }
+.week-event.birthday   { background: rgba(236,72,153,.82); color: #fff; border-left: 3px solid #9d174d; cursor: pointer; }
 /* resize handle：行程底部拖曳調整結束時間 */
 .week-event-resize {
   position: absolute;
@@ -1128,6 +1134,7 @@ window.addEventListener('unhandledrejection', function(e) {
   <span><span class="legend-dot" style="background:var(--showing)"></span> 帶看</span>
   <span><span class="legend-dot" style="background:var(--contract)"></span> 簽買賣契約</span>
   <span><span class="legend-dot" style="background:var(--other)"></span> 其他</span>
+  <span><span class="legend-dot" style="background:var(--birthday)"></span> 🎂 生日</span>
 </div>
 
 <!-- ── 月/週 共用導航列 ── -->
@@ -1666,9 +1673,14 @@ function renderCalendar() {
     dayEvs.slice(0, maxShow).forEach(ev => {
       const chip = document.createElement('div');
       chip.className = `event-chip chip-${ev.type}`;
-      const timeStr = (ev.start_dt || '').slice(11, 16);
-      const label = { commission: '📋', showing: '🏠', contract: '🤝', other: '📌' }[ev.type] || '';
-      chip.textContent = `${label} ${timeStr ? timeStr + ' ' : ''}${ev.title}`;
+      if (ev.is_birthday) {
+        // 生日是全天提醒：標題本身已含 🎂，不顯示時間與重複圖示
+        chip.textContent = ev.title;
+      } else {
+        const timeStr = (ev.start_dt || '').slice(11, 16);
+        const label = { commission: '📋', showing: '🏠', contract: '🤝', other: '📌' }[ev.type] || '';
+        chip.textContent = `${label} ${timeStr ? timeStr + ' ' : ''}${ev.title}`;
+      }
       chip.title = ev.title;
       chip.onclick = (e) => { e.stopPropagation(); openSidePanel(dateStr, ev.id); };
       evDiv.appendChild(chip);
@@ -1777,7 +1789,26 @@ function renderWeek() {
 
     // 畫行程
     const dayEvs = (eventMap[ds] || []).sort((a, b) => a.start_dt.localeCompare(b.start_dt));
+    let _bdayIdx = 0;   // 生日提醒釘在欄位最上方，多筆往下疊
     dayEvs.forEach(ev => {
+      // 生日是全天提醒：不進時間軸定位，釘頂端、不可拖曳/刪除
+      if (ev.is_birthday) {
+        const b = document.createElement('div');
+        b.className = `week-event birthday`;
+        b.style.top    = `${_bdayIdx * 22}px`;
+        b.style.height = '18px';
+        b.style.padding = '2px 6px';
+        b.style.zIndex = 5;
+        b.textContent = ev.title;
+        b.title = ev.title + '（點擊看祝賀方式）';
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openSidePanel(ds, ev.id);
+        });
+        col.appendChild(b);
+        _bdayIdx++;
+        return;
+      }
       const startM = timeToMinutes(ev.start_dt);
       const endM   = timeToMinutes(ev.end_dt) || (startM + 60);
       const dur    = Math.max(endM - startM, 15);
@@ -2236,6 +2267,30 @@ function openSidePanel(dateStr, highlightId) {
       const card = document.createElement('div');
       card.className = `side-event-card ${ev.type}`;
       if (highlightId && ev.id === highlightId) card.style.borderColor = 'var(--ac)';
+
+      // 生日提醒：唯讀，給「打電話 / LINE 祝賀」捷徑，不可編輯刪除
+      if (ev.is_birthday) {
+        const nm    = ev._person_name || '客戶';
+        const phone = (ev._phone || '').replace(/\s/g, '');
+        const lineId = (ev._line_id || '').trim();
+        let bMeta = [];
+        bMeta.push(ev._when === 'eve' ? '⏰ 明天生日，記得先準備' : '🎉 今天生日');
+        if (phone)  bMeta.push(`電話：${phone}`);
+        if (!phone && !lineId) bMeta.push('（人脈管理沒有電話/LINE，請手動聯絡）');
+
+        let acts = '';
+        if (phone)  acts += `<a class="btn-sm" href="tel:${phone}">📞 打電話</a>`;
+        if (phone)  acts += `<a class="btn-sm" href="sms:${phone}">💬 傳簡訊</a>`;
+        if (lineId) acts += `<a class="btn-sm" target="_blank" rel="noopener" href="https://line.me/R/ti/p/~${encodeURIComponent(lineId)}">🟢 LINE 祝賀</a>`;
+
+        card.innerHTML = `
+          <div class="sev-type birthday">🎂 生日提醒</div>
+          <div class="sev-title">${nm}</div>
+          <div class="sev-meta">${bMeta.join('<br>')}</div>
+          <div class="sev-actions">${acts || '<span style="color:var(--txs);font-size:.8rem">祝他生日快樂 🎂</span>'}</div>`;
+        list.appendChild(card);
+        return;
+      }
 
       const typeLabel = { commission: '簽委託約', showing: '帶看', contract: '簽買賣契約', other: '其他' };
       const timeStr = (ev.start_dt || '').slice(11, 16);
