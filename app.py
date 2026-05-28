@@ -1137,6 +1137,256 @@ def api_general_feedback():
     return jsonify({"ok": True, "total": len(entries)})
 
 
+# ══════════════════════════════════════════
+#  安娜日課表（外勞日常工作）— 完全公開，免登入
+#  Firestore：
+#    care_settings/template  → 任務模板（時段與印中文）
+#    care_done/{YYYY-MM-DD}  → 該日已勾完成的 task_id 清單
+# ══════════════════════════════════════════
+
+# 預設任務模板（首次無資料時用，使用者之後可從前端編輯覆蓋）
+_CARE_DEFAULT_TASKS = [
+    {"id": "morning_care", "time_start": "07:30", "time_end": "09:00",
+     "title_id": "Perawatan Pagi & Sarapan", "title_zh": "晨間照顧與早餐",
+     "desc_id": "Membantu Ibu bangun tidur, membersihkan diri, menyiapkan sarapan yang bergizi, dan menemani Ibu makan.",
+     "desc_zh": "協助媽媽起床、盥洗，準備營養的早餐並陪伴媽媽用餐。", "is_break": False},
+    {"id": "environment", "time_start": "09:00", "time_end": "10:30",
+     "title_id": "Peningkatan Pemeliharaan Lingkungan", "title_zh": "環境加強維護",
+     "desc_id": "Setelah kamar mandi digunakan, lakukan pembersihan ekstra pada kamar mandi dan dapur; jaga lantai kamar mandi tetap kering.",
+     "desc_zh": "使用完浴室後立即進行浴室與廚房的加強清潔，保持浴室地板乾燥防滑。", "is_break": False},
+    {"id": "hand_rehab", "time_start": "10:30", "time_end": "11:30",
+     "title_id": "Latihan Rehabilitasi Tangan", "title_zh": "手部復健練習",
+     "desc_id": "Membantu Ibu melakukan latihan rehabilitasi \"melilit jari\". Gerakan sepelan mungkin, perhatikan kenyamanan Ibu.",
+     "desc_zh": "協助媽媽進行「纏手指」復健，動作放慢，注意舒適度。", "is_break": False},
+    {"id": "lunch", "time_start": "11:30", "time_end": "13:00",
+     "title_id": "Makan Siang & Beres-beres", "title_zh": "午餐與收拾",
+     "desc_id": "Menyiapkan makan siang, membantu Ibu makan, merapikan dan mencuci peralatan.",
+     "desc_zh": "準備午餐、協助媽媽用餐，並將廚房與餐具收拾洗淨。", "is_break": False},
+    {"id": "nap", "time_start": "13:00", "time_end": "15:00",
+     "title_id": "Waktu Istirahat Siang", "title_zh": "午休時間",
+     "desc_id": "Ibu akan tidur siang. Anna juga bisa beristirahat atau mengatur waktu pribadi.",
+     "desc_zh": "媽媽會午睡，安娜可同步休息或自由安排私人時間。", "is_break": True},
+    {"id": "leg_rehab", "time_start": "15:00", "time_end": "16:00",
+     "title_id": "Pijat Rehabilitasi Kaki", "title_zh": "腿部復健按摩",
+     "desc_id": "Membantu Ibu pijat rehabilitasi kaki sesuai metode video. Perhatikan reaksi Ibu, gerakan lembut.",
+     "desc_zh": "依影片教學手法做腿部復健按摩，細心觀察反應，動作輕柔。", "is_break": False},
+    {"id": "free_prep", "time_start": "16:00", "time_end": "17:30",
+     "title_id": "Aktivitas Bebas & Menyiapkan Bahan Masakan", "title_zh": "自由活動與備料",
+     "desc_id": "Menemani Ibu berjalan-jalan atau mengobrol, kemudian menyiapkan bahan makan malam.",
+     "desc_zh": "陪伴媽媽散步或聊天，隨後準備晚餐食材。", "is_break": False},
+    {"id": "dinner", "time_start": "17:30", "time_end": "19:00",
+     "title_id": "Makan Malam & Beres-beres", "title_zh": "晚餐與收拾",
+     "desc_id": "Menyiapkan makan malam, membantu Ibu makan, dan setelah makan menyelesaikan pembersihan dapur.",
+     "desc_zh": "準備晚餐、協助用餐，餐後完成廚房與環境收拾清潔。", "is_break": False},
+    {"id": "night_care", "time_start": "19:00", "time_end": "21:00",
+     "title_id": "Pembersihan Diri Malam & Persiapan Tidur", "title_zh": "夜間盥洗與就寢準備",
+     "desc_id": "Membantu Ibu mandi (perhatikan keamanan & lantai licin), dan persiapan sebelum tidur.",
+     "desc_zh": "協助媽媽洗澡（注意浴室防滑安全），並協助就寢前準備。", "is_break": False},
+]
+
+# 預設核心原則（頁面頂部黃色橫幅顯示）
+_CARE_DEFAULT_PRINCIPLES = [
+    {"title_id": "Rehabilitasi yang Cermat", "title_zh": "細心復健",
+     "text_id": "Melaksanakan pijat rehabilitasi tangan dan kaki setiap hari.",
+     "text_zh": "每天落實手部與腿部的復健按摩。"},
+    {"title_id": "Tingkatkan Kebersihan", "title_zh": "加強清潔",
+     "text_id": "Segera membersihkan setelah digunakan, terutama kamar mandi & dapur.",
+     "text_zh": "每次使用過環境後立即清理，尤其浴室與廚房。"},
+    {"title_id": "Hormat & Sopan", "title_zh": "尊重禮貌",
+     "text_id": "Sebelum menggunakan barang/makanan Ibu, beritahu secara lisan.",
+     "text_zh": "使用媽媽的物品或食品前，請先口頭告知。"},
+    {"title_id": "Komunikasi", "title_zh": "溝通須知",
+     "text_id": "Penyesuaian kerja akan diberitahukan via grup atau oleh kakak laki-laki kedua. Selalu perhatikan pesan grup.",
+     "text_zh": "工作調整由群組或二哥告知，請隨時留意群組訊息。"},
+]
+
+
+def _care_template_ref():
+    """取得任務模板 doc ref；Firestore 不可用回 None。"""
+    db = _get_db()
+    return db.collection("care_settings").document("template") if db else None
+
+
+def _care_done_ref(date_str):
+    """取得某日勾選紀錄 doc ref（date_str = YYYY-MM-DD）。"""
+    db = _get_db()
+    return db.collection("care_done").document(date_str) if db else None
+
+
+def _care_get_template():
+    """讀模板；沒有就回預設（不寫入，第一次 PUT 時才會落地）。"""
+    ref = _care_template_ref()
+    if ref is None:
+        return {"tasks": _CARE_DEFAULT_TASKS, "principles": _CARE_DEFAULT_PRINCIPLES}
+    try:
+        snap = ref.get()
+        if snap.exists:
+            d = snap.to_dict() or {}
+            return {
+                "tasks": d.get("tasks") or _CARE_DEFAULT_TASKS,
+                "principles": d.get("principles") or _CARE_DEFAULT_PRINCIPLES,
+            }
+    except Exception as e:
+        logging.warning("care template read error: %s", e)
+    return {"tasks": _CARE_DEFAULT_TASKS, "principles": _CARE_DEFAULT_PRINCIPLES}
+
+
+@app.route("/care")
+def care_page():
+    """安娜日課表頁面（公開，免登入）。"""
+    return send_from_directory("static", "care.html")
+
+
+@app.route("/api/care/tasks", methods=["GET"])
+def api_care_tasks_get():
+    """回傳任務模板（含核心原則）。完全公開。"""
+    return jsonify(_care_get_template())
+
+
+@app.route("/api/care/tasks", methods=["PUT"])
+def api_care_tasks_put():
+    """覆蓋任務模板。完全公開（任何人都能改）。
+
+    body: {"tasks": [...], "principles": [...]}
+    tasks 每筆需有：id, time_start, time_end, title_id, title_zh；其餘選填。
+    """
+    ref = _care_template_ref()
+    if ref is None:
+        return jsonify({"error": "Firestore 不可用"}), 503
+
+    data = request.get_json(silent=True) or {}
+    tasks = data.get("tasks")
+    principles = data.get("principles")
+    if not isinstance(tasks, list) or not tasks:
+        return jsonify({"error": "tasks 必填且為非空陣列"}), 400
+
+    # 簡單驗證每個 task 必要欄位
+    cleaned = []
+    seen_ids = set()
+    for i, t in enumerate(tasks):
+        if not isinstance(t, dict):
+            continue
+        tid = str(t.get("id") or "").strip() or f"task_{i+1}"
+        if tid in seen_ids:                   # id 撞名自動補序號
+            tid = f"{tid}_{i+1}"
+        seen_ids.add(tid)
+        cleaned.append({
+            "id": tid,
+            "time_start": str(t.get("time_start") or "").strip(),
+            "time_end":   str(t.get("time_end") or "").strip(),
+            "title_id":   str(t.get("title_id") or "").strip(),
+            "title_zh":   str(t.get("title_zh") or "").strip(),
+            "desc_id":    str(t.get("desc_id") or "").strip(),
+            "desc_zh":    str(t.get("desc_zh") or "").strip(),
+            "is_break":   bool(t.get("is_break")),
+        })
+
+    payload = {
+        "tasks": cleaned,
+        "updated_at": datetime.now(timezone(timedelta(hours=8))).isoformat(),
+    }
+    if isinstance(principles, list):
+        payload["principles"] = [
+            {
+                "title_id": str(p.get("title_id") or "").strip(),
+                "title_zh": str(p.get("title_zh") or "").strip(),
+                "text_id":  str(p.get("text_id") or "").strip(),
+                "text_zh":  str(p.get("text_zh") or "").strip(),
+            }
+            for p in principles if isinstance(p, dict)
+        ]
+
+    try:
+        ref.set(payload, merge=True)
+        return jsonify({"ok": True, "tasks": cleaned, "principles": payload.get("principles")})
+    except Exception as e:
+        logging.warning("care template write error: %s", e)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/care/done", methods=["GET"])
+def api_care_done_get():
+    """取得某日（或日期範圍）的勾選紀錄。
+
+    query: date=YYYY-MM-DD（單日，回 {done:[task_id,...]}）
+           或 start=YYYY-MM-DD&end=YYYY-MM-DD（範圍，回 {byDate:{date:[task_id,...]}}）
+    """
+    db = _get_db()
+    if db is None:
+        return jsonify({"done": [], "byDate": {}})
+    single = (request.args.get("date") or "").strip()
+    if single:
+        try:
+            snap = db.collection("care_done").document(single).get()
+            return jsonify({"done": (snap.to_dict() or {}).get("done", []) if snap.exists else []})
+        except Exception as e:
+            logging.warning("care done get error: %s", e)
+            return jsonify({"done": []})
+
+    start = (request.args.get("start") or "").strip()
+    end   = (request.args.get("end") or "").strip()
+    by_date = {}
+    if start and end:
+        try:
+            # care_done doc id 就是日期字串，用範圍查 document id
+            docs = (db.collection("care_done")
+                      .where("__name__", ">=", db.collection("care_done").document(start).path)
+                      .where("__name__", "<=", db.collection("care_done").document(end).path)
+                      .stream())
+            for d in docs:
+                by_date[d.id] = (d.to_dict() or {}).get("done", [])
+        except Exception:
+            # 範圍查不行就降階用 doc-by-doc（週檢視最多 7 天）
+            from datetime import datetime as _dt
+            try:
+                s = _dt.fromisoformat(start).date()
+                e = _dt.fromisoformat(end).date()
+                cur = s
+                while cur <= e:
+                    snap = db.collection("care_done").document(cur.isoformat()).get()
+                    if snap.exists:
+                        by_date[cur.isoformat()] = (snap.to_dict() or {}).get("done", [])
+                    cur += timedelta(days=1)
+            except Exception as ee:
+                logging.warning("care done range error: %s", ee)
+    return jsonify({"byDate": by_date})
+
+
+@app.route("/api/care/done", methods=["POST"])
+def api_care_done_post():
+    """勾選/取消勾選某日某任務。
+
+    body: {"date": "YYYY-MM-DD", "task_id": "morning_care", "done": true/false}
+    """
+    db = _get_db()
+    if db is None:
+        return jsonify({"error": "Firestore 不可用"}), 503
+    data = request.get_json(silent=True) or {}
+    date_str = str(data.get("date") or "").strip()
+    task_id  = str(data.get("task_id") or "").strip()
+    done     = bool(data.get("done"))
+    if not date_str or not task_id:
+        return jsonify({"error": "date 與 task_id 必填"}), 400
+
+    ref = db.collection("care_done").document(date_str)
+    try:
+        snap = ref.get()
+        cur = list((snap.to_dict() or {}).get("done", []) if snap.exists else [])
+        if done and task_id not in cur:
+            cur.append(task_id)
+        elif (not done) and task_id in cur:
+            cur = [t for t in cur if t != task_id]
+        ref.set({
+            "date": date_str,
+            "done": cur,
+            "updated_at": datetime.now(timezone(timedelta(hours=8))).isoformat(),
+        }, merge=True)
+        return jsonify({"ok": True, "done": cur})
+    except Exception as e:
+        logging.warning("care done write error: %s", e)
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/")
 def index():
     """回傳前端主頁。"""

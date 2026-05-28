@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Jadwal Harian Anna｜安娜日課表</title>
+<style>
+/* 暖色調主題（粉橘），與業務行事曆深色商務感區隔，主要使用者是安娜 */
+:root{
+  --bg:#fff7f0; --bg2:#ffeede; --bd:#f3d0b0;
+  --tx:#3d2b1f; --txs:#7a5b46; --ac:#ec4899; --ac2:#f97316;
+  --ok:#16a34a; --br:#9ca3af; --warn:#facc15;
+  --card:#ffffff; --shadow:0 2px 8px rgba(236,72,153,.08);
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
+  font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  font-size:15px; line-height:1.4;}
+
+/* ── 頁首 ── */
+.hdr{
+  background:linear-gradient(135deg,#fbcfe8,#fed7aa);
+  padding:14px 18px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  border-bottom:2px solid var(--bd); position:sticky; top:0; z-index:10;
+}
+.hdr h1{margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;}
+.hdr .sub{font-size:.8rem; color:var(--txs); margin-left:6px;}
+.spacer{flex:1}
+.btn{
+  background:#fff; border:1px solid var(--bd); border-radius:10px;
+  padding:8px 14px; font-size:.9rem; cursor:pointer; color:var(--tx);
+  text-decoration:none; display:inline-flex; align-items:center; gap:5px;
+  transition:all .15s;
+}
+.btn:hover{background:var(--bg2); border-color:var(--ac);}
+.btn.primary{background:var(--ac); color:#fff; border-color:var(--ac);}
+.btn.primary:hover{filter:brightness(1.05); background:var(--ac);}
+.btn.ghost{background:transparent}
+
+/* 日期導覽列 + 檢視切換 */
+.nav-bar{
+  background:#fff; padding:10px 18px; display:flex; align-items:center; gap:10px;
+  border-bottom:1px solid var(--bd); flex-wrap:wrap; position:sticky; top:60px; z-index:9;
+}
+.date-disp{font-weight:600; font-size:1.05rem; min-width:170px; text-align:center;}
+.view-toggle{display:flex; border:1px solid var(--bd); border-radius:8px; overflow:hidden;}
+.view-toggle button{
+  background:transparent; border:0; padding:6px 14px; cursor:pointer; color:var(--txs);
+  font-size:.88rem;
+}
+.view-toggle button.active{background:var(--ac); color:#fff; font-weight:600;}
+
+/* ── 核心原則橫幅 ── */
+.principles{
+  background:#fef3c7; border:1px solid #fde68a; margin:14px 18px; border-radius:var(--radius);
+  padding:14px 16px; box-shadow:var(--shadow);
+}
+.principles h2{margin:0 0 10px; font-size:.95rem; color:#92400e; display:flex; align-items:center; gap:6px;}
+.principles-grid{
+  display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+}
+.principle{
+  background:#fffbeb; border-left:3px solid #f59e0b; border-radius:8px; padding:8px 10px;
+}
+.principle .p-id{font-size:.85rem; font-weight:600; color:#78350f;}
+.principle .p-zh{font-size:.78rem; color:#92400e; margin-top:2px;}
+.principles .toggle-bar{font-size:.78rem; color:#92400e; margin-top:8px; cursor:pointer;}
+.principles.collapsed .principles-grid{display:none;}
+
+/* ── 主內容區 ── */
+.main{padding:0 18px 40px;}
+
+/* 日檢視：垂直時間軸 */
+.day-view{position:relative; background:var(--card); border-radius:var(--radius);
+  border:1px solid var(--bd); box-shadow:var(--shadow); padding:8px 0;}
+.day-summary{
+  padding:14px 18px; background:linear-gradient(90deg,#ec4899,#f97316); color:#fff;
+  border-radius:var(--radius) var(--radius) 0 0; font-weight:600;
+}
+.day-summary .progress{
+  height:10px; background:rgba(255,255,255,.3); border-radius:5px; margin-top:8px; overflow:hidden;
+}
+.day-summary .progress > div{height:100%; background:#fff; transition:width .3s;}
+
+/* 任務卡片（日檢視） */
+.task-list{padding:14px;}
+.task-card{
+  background:#fff; border:1px solid var(--bd); border-radius:var(--radius);
+  padding:14px 16px 14px 16px; margin-bottom:12px; position:relative;
+  display:flex; gap:12px; align-items:flex-start;
+  border-left:5px solid var(--ac); transition:all .15s; cursor:default;
+}
+.task-card.done{background:#f0fdf4; border-left-color:var(--ok); opacity:.85;}
+.task-card.done .t-title{text-decoration:line-through; color:var(--br);}
+.task-card.is-break{background:#f5f3ff; border-left-color:#a78bfa;}
+.task-card.is-break .t-checkbox{display:none;}
+.task-card.now{box-shadow:0 0 0 3px rgba(236,72,153,.25);}
+
+.t-time{
+  background:var(--bg2); color:var(--ac2); border-radius:8px; padding:6px 10px;
+  font-weight:700; font-size:.8rem; white-space:nowrap; min-width:90px; text-align:center;
+}
+.task-card.is-break .t-time{background:#ede9fe; color:#7c3aed;}
+.task-card.done .t-time{background:#dcfce7; color:#16a34a;}
+.t-body{flex:1; min-width:0;}
+.t-title{font-size:1.05rem; font-weight:700; line-height:1.3; word-wrap:break-word;}
+.t-title-zh{font-size:.82rem; color:var(--txs); margin-top:3px;}
+.t-desc{font-size:.85rem; color:var(--txs); margin-top:6px; line-height:1.5;}
+.t-desc-zh{font-size:.78rem; color:#a87b5d; margin-top:4px; padding-top:4px; border-top:1px dashed #f0d4b8;}
+.t-checkbox{
+  width:32px; height:32px; flex-shrink:0; border-radius:50%;
+  border:2px solid var(--ac); background:#fff; cursor:pointer; position:relative;
+  transition:all .15s;
+}
+.t-checkbox:hover{background:#fce7f3;}
+.t-checkbox.checked{background:var(--ok); border-color:var(--ok);}
+.t-checkbox.checked::after{
+  content:"✓"; color:#fff; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:1.1rem; font-weight:900;
+}
+
+/* 週檢視 */
+.week-view{
+  background:var(--card); border-radius:var(--radius); border:1px solid var(--bd);
+  box-shadow:var(--shadow); overflow:hidden;
+}
+.week-head{
+  display:grid; grid-template-columns:repeat(7,1fr); background:var(--bg2);
+  border-bottom:1px solid var(--bd);
+}
+.week-head .w-day{padding:10px 8px; text-align:center; border-right:1px solid var(--bd); font-size:.85rem;}
+.week-head .w-day:last-child{border-right:0;}
+.week-head .w-day.today{background:#fbcfe8;}
+.week-head .dow{color:var(--txs); font-size:.72rem;}
+.week-head .dnum{font-weight:700; font-size:1.1rem;}
+.week-head .pct{font-size:.72rem; color:var(--ac2); margin-top:2px;}
+.week-grid{display:grid; grid-template-columns:repeat(7,1fr);}
+.week-col{border-right:1px solid var(--bd); min-height:400px; padding:6px;}
+.week-col:last-child{border-right:0;}
+.week-col.today{background:#fef3f6;}
+
+.w-task{
+  background:#fff; border:1px solid var(--bd); border-left:3px solid var(--ac);
+  border-radius:8px; padding:5px 7px; margin-bottom:6px; font-size:.72rem; position:relative;
+  cursor:pointer;
+}
+.w-task.done{background:#f0fdf4; border-left-color:var(--ok); text-decoration:line-through; opacity:.75;}
+.w-task.is-break{background:#f5f3ff; border-left-color:#a78bfa; opacity:.7; cursor:default;}
+.w-task .wt-time{color:var(--ac2); font-weight:700; font-size:.68rem;}
+.w-task.done .wt-time{color:var(--ok);}
+.w-task .wt-title{margin-top:2px; line-height:1.25; word-break:break-word;}
+.w-task .wt-check{
+  position:absolute; top:4px; right:4px; width:16px; height:16px; border-radius:50%;
+  border:1.5px solid var(--ac); background:#fff;
+}
+.w-task.done .wt-check{background:var(--ok); border-color:var(--ok);}
+.w-task.done .wt-check::after{content:"✓"; color:#fff; font-size:.65rem; font-weight:900;
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;}
+.w-task.is-break .wt-check{display:none;}
+
+/* ── 編輯 Modal ── */
+.modal-bg{
+  position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100;
+  display:none; align-items:center; justify-content:center; padding:14px;
+}
+.modal-bg.show{display:flex;}
+.modal{
+  background:var(--bg); border-radius:var(--radius); max-width:780px; width:100%;
+  max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+.modal-head{
+  padding:16px 20px; border-bottom:1px solid var(--bd); display:flex; align-items:center;
+  position:sticky; top:0; background:var(--bg); z-index:2;
+}
+.modal-head h2{margin:0; font-size:1.1rem;}
+.modal-body{padding:16px 20px;}
+.modal-foot{
+  padding:14px 20px; border-top:1px solid var(--bd); display:flex; gap:10px; justify-content:flex-end;
+  position:sticky; bottom:0; background:var(--bg);
+}
+.edit-task{
+  background:#fff; border:1px solid var(--bd); border-radius:10px; padding:12px;
+  margin-bottom:12px;
+}
+.edit-task .row{display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;}
+.edit-task input[type="text"], .edit-task input[type="time"], .edit-task textarea{
+  background:#fff; border:1px solid var(--bd); border-radius:6px; padding:6px 8px;
+  font-size:.88rem; font-family:inherit; color:var(--tx);
+}
+.edit-task input[type="text"]{flex:1; min-width:120px;}
+.edit-task textarea{width:100%; min-height:48px; resize:vertical;}
+.edit-task .small{font-size:.75rem; color:var(--txs); margin-bottom:3px;}
+.edit-task .ctrl{display:flex; gap:6px; align-items:center; margin-top:6px;}
+.edit-task .ctrl label{font-size:.8rem; color:var(--txs); display:flex; align-items:center; gap:4px;}
+.edit-task .del-btn{background:#fee2e2; border:1px solid #fecaca; color:#b91c1c;
+  border-radius:6px; padding:4px 10px; cursor:pointer; font-size:.78rem; margin-left:auto;}
+
+.edit-principle{
+  background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px;
+  margin-bottom:8px;
+}
+
+.section-title{
+  font-weight:700; font-size:.95rem; margin:18px 0 8px; color:var(--ac);
+  display:flex; align-items:center; gap:6px;
+}
+.section-title:first-child{margin-top:0;}
+
+/* Tooltip（hover 看中文）*/
+.tooltip{
+  position:absolute; background:#1f2937; color:#fff; padding:8px 12px; border-radius:8px;
+  font-size:.78rem; line-height:1.5; max-width:260px; z-index:1000;
+  pointer-events:none; opacity:0; transition:opacity .15s;
+  box-shadow:0 4px 12px rgba(0,0,0,.3);
+}
+.tooltip.show{opacity:1;}
+
+/* Toast 提示 */
+.toast{
+  position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  background:#1f2937; color:#fff; padding:10px 16px; border-radius:8px;
+  font-size:.85rem; z-index:200; opacity:0; transition:opacity .2s;
+  pointer-events:none;
+}
+.toast.show{opacity:1;}
+.toast.err{background:#dc2626;}
+
+/* 手機 */
+@media (max-width:640px){
+  .hdr h1{font-size:1rem;}
+  .hdr .sub{display:none;}
+  .nav-bar{top:54px;}
+  .principles{margin:10px;}
+  .main{padding:0 10px 30px;}
+  .task-card{padding:10px 12px; gap:8px;}
+  .t-time{font-size:.72rem; padding:5px 8px; min-width:78px;}
+  .t-title{font-size:.95rem;}
+  .week-col{padding:4px; min-height:300px;}
+  .w-task{font-size:.65rem; padding:4px 5px;}
+  .btn{padding:6px 10px; font-size:.82rem;}
+  .date-disp{min-width:140px; font-size:.95rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- 頁首 -->
+<div class="hdr">
+  <h1>👩 Jadwal Harian Anna <span class="sub">安娜日課表</span></h1>
+  <div class="spacer"></div>
+  <button class="btn ghost" onclick="openEdit()">⚙️ Edit | 編輯</button>
+  <a class="btn ghost" href="/">← Kalender Kerja｜回行事曆</a>
+</div>
+
+<!-- 日期導覽 + 檢視切換 -->
+<div class="nav-bar">
+  <button class="btn" onclick="shiftDate(-1)">‹</button>
+  <button class="btn" onclick="goToday()">Hari Ini｜今天</button>
+  <button class="btn" onclick="shiftDate(1)">›</button>
+  <div class="date-disp" id="date-disp">—</div>
+  <div class="spacer"></div>
+  <div class="view-toggle">
+    <button id="vt-day"  class="active" onclick="setView('day')">📅 Harian｜日</button>
+    <button id="vt-week" onclick="setView('week')">🗓 Mingguan｜週</button>
+  </div>
+</div>
+
+<!-- 核心原則橫幅 -->
+<div class="principles" id="principles">
+  <h2>📋 Prinsip Inti Harian｜每日核心原則
+    <span style="margin-left:auto" class="toggle-bar" onclick="togglePrinciples()">收合 ▾</span>
+  </h2>
+  <div class="principles-grid" id="principles-grid"></div>
+</div>
+
+<!-- 主內容 -->
+<div class="main">
+  <div id="day-pane" class="day-view">
+    <div class="day-summary" id="day-summary"></div>
+    <div class="task-list" id="task-list"></div>
+  </div>
+  <div id="week-pane" class="week-view" style="display:none;">
+    <div class="week-head" id="week-head"></div>
+    <div class="week-grid" id="week-grid"></div>
+  </div>
+</div>
+
+<!-- 編輯 Modal -->
+<div class="modal-bg" id="edit-modal" onclick="if(event.target===this)closeEdit()">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>⚙️ Edit Jadwal｜編輯日課表</h2>
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn ghost" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-title">📝 Tugas Harian｜每日任務</div>
+      <div id="edit-tasks"></div>
+      <button class="btn" onclick="addTask()">+ Tambah Tugas｜新增任務</button>
+
+      <div class="section-title">📋 Prinsip Inti｜核心原則</div>
+      <div id="edit-principles"></div>
+      <button class="btn" onclick="addPrinciple()">+ Tambah Prinsip｜新增原則</button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="closeEdit()">Batal｜取消</button>
+      <button class="btn primary" onclick="saveTemplate()">💾 Simpan｜儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip 與 Toast -->
+<div class="tooltip" id="tooltip"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════
+//  狀態
+// ════════════════════════════════════════════
+let _template = { tasks: [], principles: [] };
+let _doneMap  = {};                    // { 'YYYY-MM-DD': [task_id, ...] }
+let _curDate  = new Date();            // 目前選的日期
+let _view     = 'day';                 // 'day' | 'week'
+
+// ════════════════════════════════════════════
+//  小工具
+// ════════════════════════════════════════════
+function pad(n){return String(n).padStart(2,'0');}
+function toDateStr(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
+function parseDateStr(s){const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d);}
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function showToast(msg, isErr){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast show'+(isErr?' err':'');
+  clearTimeout(window._tt); window._tt=setTimeout(()=>el.className='toast'+(isErr?' err':''), 2200);
+}
+function isoWeekStart(d){           // 本週週一
+  const t=new Date(d); const day=t.getDay()||7;   // 週日當 7
+  t.setDate(t.getDate()-(day-1)); t.setHours(0,0,0,0); return t;
+}
+
+// ════════════════════════════════════════════
+//  載入資料
+// ════════════════════════════════════════════
+async function loadTemplate(){
+  try{
+    const r = await fetch('/api/care/tasks'); const j = await r.json();
+    _template.tasks = j.tasks || [];
+    _template.principles = j.principles || [];
+  }catch(e){ showToast('載入任務失敗', true); }
+}
+
+async function loadDoneSingle(dateStr){
+  try{
+    const r = await fetch('/api/care/done?date='+encodeURIComponent(dateStr));
+    const j = await r.json(); _doneMap[dateStr] = j.done || [];
+  }catch(e){ _doneMap[dateStr] = []; }
+}
+
+async function loadDoneRange(start, end){
+  try{
+    const r = await fetch(`/api/care/done?start=${start}&end=${end}`);
+    const j = await r.json(); const by = j.byDate || {};
+    Object.keys(by).forEach(k => _doneMap[k] = by[k]);
+  }catch(e){ /* 失敗就空 */ }
+}
+
+// ════════════════════════════════════════════
+//  渲染：原則橫幅
+// ════════════════════════════════════════════
+function renderPrinciples(){
+  const wrap = document.getElementById('principles-grid'); wrap.innerHTML='';
+  (_template.principles||[]).forEach(p => {
+    const el = document.createElement('div'); el.className='principle';
+    el.innerHTML = `<div class="p-id">${escapeHtml(p.title_id)}</div>
+      <div class="p-zh">${escapeHtml(p.title_zh)}｜${escapeHtml(p.text_id)}</div>
+      <div class="p-zh" style="color:#a16207">${escapeHtml(p.text_zh)}</div>`;
+    wrap.appendChild(el);
+  });
+}
+function togglePrinciples(){
+  document.getElementById('principles').classList.toggle('collapsed');
+}
+
+// ════════════════════════════════════════════
+//  渲染：日檢視
+// ════════════════════════════════════════════
+function renderDay(){
+  document.getElementById('day-pane').style.display='';
+  document.getElementById('week-pane').style.display='none';
+
+  const ds = toDateStr(_curDate);
+  const done = _doneMap[ds] || [];
+  const tasks = _template.tasks || [];
+
+  // 不計午休的可勾總數
+  const workable = tasks.filter(t => !t.is_break);
+  const doneCount = workable.filter(t => done.includes(t.id)).length;
+  const pct = workable.length ? Math.round(doneCount*100/workable.length) : 0;
+
+  document.getElementById('day-summary').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div>${formatDateLong(_curDate)}</div>
+      <div style="margin-left:auto;font-size:.9rem;">
+        Selesai｜完成 <b>${doneCount}/${workable.length}</b>（${pct}%）
+      </div>
+    </div>
+    <div class="progress"><div style="width:${pct}%"></div></div>`;
+
+  const list = document.getElementById('task-list'); list.innerHTML='';
+  const now = new Date(); const isToday = (ds === toDateStr(now));
+  const nowMin = now.getHours()*60 + now.getMinutes();
+
+  tasks.forEach(t => {
+    const isDone = done.includes(t.id);
+    const card = document.createElement('div');
+    let cls = 'task-card';
+    if (isDone) cls += ' done';
+    if (t.is_break) cls += ' is-break';
+    // 「正在進行中」標記
+    if (isToday && !t.is_break){
+      const s = timeStrToMin(t.time_start), e = timeStrToMin(t.time_end);
+      if (s !== null && e !== null && nowMin >= s && nowMin < e) cls += ' now';
+    }
+    card.className = cls;
+
+    card.innerHTML = `
+      <div class="t-time">${escapeHtml(t.time_start)}<br>~ ${escapeHtml(t.time_end)}</div>
+      <div class="t-body">
+        <div class="t-title">${escapeHtml(t.title_id)}</div>
+        <div class="t-title-zh">${escapeHtml(t.title_zh)}</div>
+        ${t.desc_id ? `<div class="t-desc">${escapeHtml(t.desc_id)}</div>` : ''}
+        ${t.desc_zh ? `<div class="t-desc-zh">${escapeHtml(t.desc_zh)}</div>` : ''}
+      </div>
+      ${t.is_break ? '' : `<div class="t-checkbox${isDone?' checked':''}" data-tid="${escapeHtml(t.id)}"></div>`}`;
+    list.appendChild(card);
+
+    if (!t.is_break){
+      const cb = card.querySelector('.t-checkbox');
+      cb.addEventListener('click', () => toggleDone(ds, t.id, cb));
+    }
+  });
+}
+function timeStrToMin(s){
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s||''); if(!m) return null;
+  return parseInt(m[1])*60 + parseInt(m[2]);
+}
+function formatDateLong(d){
+  const wd = ['Minggu｜日','Senin｜一','Selasa｜二','Rabu｜三','Kamis｜四','Jumat｜五','Sabtu｜六'];
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}（${wd[d.getDay()]}）`;
+}
+
+// ════════════════════════════════════════════
+//  渲染：週檢視
+// ════════════════════════════════════════════
+async function renderWeek(){
+  document.getElementById('day-pane').style.display='none';
+  document.getElementById('week-pane').style.display='';
+
+  const mon = isoWeekStart(_curDate);
+  const days = [];
+  for (let i=0;i<7;i++){
+    const d=new Date(mon); d.setDate(mon.getDate()+i); days.push(d);
+  }
+  const startStr = toDateStr(days[0]);
+  const endStr   = toDateStr(days[6]);
+  await loadDoneRange(startStr, endStr);
+
+  const todayStr = toDateStr(new Date());
+  const head = document.getElementById('week-head'); head.innerHTML='';
+  const grid = document.getElementById('week-grid'); grid.innerHTML='';
+  const tasks = _template.tasks || [];
+  const workable = tasks.filter(t => !t.is_break);
+
+  const dows = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+  days.forEach((d, idx) => {
+    const ds = toDateStr(d);
+    const done = _doneMap[ds] || [];
+    const doneCount = workable.filter(t => done.includes(t.id)).length;
+    const pct = workable.length ? Math.round(doneCount*100/workable.length) : 0;
+
+    const wd = document.createElement('div');
+    wd.className = 'w-day' + (ds === todayStr ? ' today' : '');
+    wd.innerHTML = `<div class="dow">${dows[idx]}｜${'一二三四五六日'[idx]}</div>
+      <div class="dnum">${d.getMonth()+1}/${d.getDate()}</div>
+      <div class="pct">${doneCount}/${workable.length}（${pct}%）</div>`;
+    wd.style.cursor='pointer';
+    wd.onclick = () => { _curDate = d; setView('day'); };
+    head.appendChild(wd);
+
+    const col = document.createElement('div');
+    col.className = 'week-col' + (ds === todayStr ? ' today' : '');
+    tasks.forEach(t => {
+      const isDone = done.includes(t.id);
+      const wt = document.createElement('div');
+      let cls='w-task' + (isDone?' done':'') + (t.is_break?' is-break':'');
+      wt.className = cls;
+      wt.innerHTML = `<div class="wt-time">${escapeHtml(t.time_start)}–${escapeHtml(t.time_end)}</div>
+        <div class="wt-title">${escapeHtml(t.title_id)}</div>
+        ${t.is_break ? '' : '<div class="wt-check"></div>'}`;
+      if (!t.is_break){
+        wt.addEventListener('click', e => {
+          e.stopPropagation();
+          toggleDone(ds, t.id, null, () => renderWeek());
+        });
+      }
+      // hover/長按 → tooltip
+      bindTooltip(wt, `${t.title_zh}｜${t.title_id}\n${t.desc_zh||''}`);
+      col.appendChild(wt);
+    });
+    grid.appendChild(col);
+  });
+}
+
+// ════════════════════════════════════════════
+//  打勾/取消
+// ════════════════════════════════════════════
+async function toggleDone(dateStr, taskId, cbEl, onAfter){
+  // 樂觀更新 UI
+  const cur = new Set(_doneMap[dateStr] || []);
+  const newDone = !cur.has(taskId);
+  if (newDone) cur.add(taskId); else cur.delete(taskId);
+  _doneMap[dateStr] = Array.from(cur);
+  if (cbEl) cbEl.classList.toggle('checked', newDone);
+
+  try{
+    const r = await fetch('/api/care/done', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ date:dateStr, task_id:taskId, done:newDone })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const j = await r.json(); _doneMap[dateStr] = j.done || [];
+    showToast(newDone ? '✅ 已標記完成' : '↩️ 已取消');
+    if (_view === 'day') renderDay();
+    if (onAfter) onAfter();
+  }catch(e){
+    showToast('儲存失敗：' + e.message, true);
+    // 失敗回滾
+    if (newDone) cur.delete(taskId); else cur.add(taskId);
+    _doneMap[dateStr] = Array.from(cur);
+    if (cbEl) cbEl.classList.toggle('checked', !newDone);
+  }
+}
+
+// ════════════════════════════════════════════
+//  日期/檢視切換
+// ════════════════════════════════════════════
+function updateDateDisp(){
+  if (_view === 'day'){
+    document.getElementById('date-disp').textContent = formatDateLong(_curDate);
+  }else{
+    const mon = isoWeekStart(_curDate);
+    const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+    document.getElementById('date-disp').textContent =
+      `${mon.getMonth()+1}/${mon.getDate()} – ${sun.getMonth()+1}/${sun.getDate()}`;
+  }
+}
+async function setView(v){
+  _view = v;
+  document.getElementById('vt-day').classList.toggle('active', v==='day');
+  document.getElementById('vt-week').classList.toggle('active', v==='week');
+  updateDateDisp();
+  if (v === 'day'){
+    await loadDoneSingle(toDateStr(_curDate));
+    renderDay();
+  }else{
+    await renderWeek();
+  }
+}
+async function shiftDate(n){
+  const step = (_view === 'week') ? 7 : 1;
+  _curDate.setDate(_curDate.getDate() + n*step);
+  await setView(_view);
+}
+async function goToday(){ _curDate = new Date(); await setView(_view); }
+
+// ════════════════════════════════════════════
+//  Tooltip（hover & 長按）
+// ════════════════════════════════════════════
+function bindTooltip(el, text){
+  if (!text) return;
+  const tip = document.getElementById('tooltip');
+  el.addEventListener('mouseenter', e => {
+    tip.textContent = text;
+    const r = el.getBoundingClientRect();
+    tip.style.left = (r.left) + 'px';
+    tip.style.top  = (r.bottom + 6) + 'px';
+    tip.classList.add('show');
+  });
+  el.addEventListener('mouseleave', () => tip.classList.remove('show'));
+  // 手機長按
+  let _t=null;
+  el.addEventListener('touchstart', e => {
+    _t = setTimeout(() => {
+      tip.textContent = text;
+      const r = el.getBoundingClientRect();
+      tip.style.left = (r.left) + 'px';
+      tip.style.top  = (r.bottom + 6) + 'px';
+      tip.classList.add('show');
+    }, 500);
+  }, {passive:true});
+  el.addEventListener('touchend',   () => { clearTimeout(_t); setTimeout(()=>tip.classList.remove('show'),1500); });
+  el.addEventListener('touchmove',  () => clearTimeout(_t));
+}
+
+// ════════════════════════════════════════════
+//  編輯 Modal
+// ════════════════════════════════════════════
+let _draft = null;
+function openEdit(){
+  _draft = JSON.parse(JSON.stringify(_template));  // 深拷貝
+  renderEditList();
+  document.getElementById('edit-modal').classList.add('show');
+}
+function closeEdit(){
+  document.getElementById('edit-modal').classList.remove('show');
+}
+function renderEditList(){
+  const wrap = document.getElementById('edit-tasks'); wrap.innerHTML='';
+  (_draft.tasks||[]).forEach((t, i) => {
+    const el = document.createElement('div'); el.className='edit-task';
+    el.innerHTML = `
+      <div class="row">
+        <div>
+          <div class="small">Mulai｜開始</div>
+          <input type="time" value="${escapeHtml(t.time_start)}" data-k="time_start" data-i="${i}">
+        </div>
+        <div>
+          <div class="small">Selesai｜結束</div>
+          <input type="time" value="${escapeHtml(t.time_end)}" data-k="time_end" data-i="${i}">
+        </div>
+        <div style="flex:1">
+          <div class="small">ID（kebab-case，唯一）</div>
+          <input type="text" value="${escapeHtml(t.id)}" data-k="id" data-i="${i}">
+        </div>
+        <button class="del-btn" onclick="delTask(${i})">🗑 刪除</button>
+      </div>
+      <div class="row">
+        <div style="flex:1">
+          <div class="small">Judul (印尼文)</div>
+          <input type="text" value="${escapeHtml(t.title_id)}" data-k="title_id" data-i="${i}">
+        </div>
+        <div style="flex:1">
+          <div class="small">標題 (中文)</div>
+          <input type="text" value="${escapeHtml(t.title_zh)}" data-k="title_zh" data-i="${i}">
+        </div>
+      </div>
+      <div class="row">
+        <div style="flex:1">
+          <div class="small">Deskripsi (印尼文，選填)</div>
+          <textarea data-k="desc_id" data-i="${i}">${escapeHtml(t.desc_id||'')}</textarea>
+        </div>
+        <div style="flex:1">
+          <div class="small">說明 (中文，選填)</div>
+          <textarea data-k="desc_zh" data-i="${i}">${escapeHtml(t.desc_zh||'')}</textarea>
+        </div>
+      </div>
+      <div class="ctrl">
+        <label><input type="checkbox" data-k="is_break" data-i="${i}" ${t.is_break?'checked':''}> 休息時段（不顯示打勾框）</label>
+      </div>`;
+    wrap.appendChild(el);
+  });
+  // 綁定 input change
+  wrap.querySelectorAll('[data-k]').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const k = inp.dataset.k, i = parseInt(inp.dataset.i);
+      _draft.tasks[i][k] = (inp.type === 'checkbox') ? inp.checked : inp.value;
+    });
+    inp.addEventListener('input', e => {
+      if (inp.type === 'text' || inp.type === 'time' || inp.tagName === 'TEXTAREA'){
+        const k = inp.dataset.k, i = parseInt(inp.dataset.i);
+        _draft.tasks[i][k] = inp.value;
+      }
+    });
+  });
+
+  // 原則編輯
+  const pwrap = document.getElementById('edit-principles'); pwrap.innerHTML='';
+  (_draft.principles||[]).forEach((p, i) => {
+    const el = document.createElement('div'); el.className='edit-principle';
+    el.innerHTML = `
+      <div class="row">
+        <div style="flex:1">
+          <div class="small">Judul ID</div>
+          <input type="text" value="${escapeHtml(p.title_id)}" data-pk="title_id" data-pi="${i}">
+        </div>
+        <div style="flex:1">
+          <div class="small">標題（中文）</div>
+          <input type="text" value="${escapeHtml(p.title_zh)}" data-pk="title_zh" data-pi="${i}">
+        </div>
+        <button class="del-btn" onclick="delPrinciple(${i})">🗑</button>
+      </div>
+      <div class="row">
+        <div style="flex:1">
+          <div class="small">Teks ID</div>
+          <input type="text" value="${escapeHtml(p.text_id)}" data-pk="text_id" data-pi="${i}">
+        </div>
+        <div style="flex:1">
+          <div class="small">內容（中文）</div>
+          <input type="text" value="${escapeHtml(p.text_zh)}" data-pk="text_zh" data-pi="${i}">
+        </div>
+      </div>`;
+    pwrap.appendChild(el);
+  });
+  pwrap.querySelectorAll('[data-pk]').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const k = inp.dataset.pk, i = parseInt(inp.dataset.pi);
+      _draft.principles[i][k] = inp.value;
+    });
+  });
+}
+function addTask(){
+  _draft.tasks.push({
+    id: 'task_' + (_draft.tasks.length+1),
+    time_start:'08:00', time_end:'09:00',
+    title_id:'', title_zh:'', desc_id:'', desc_zh:'', is_break:false
+  });
+  renderEditList();
+}
+function delTask(i){
+  if (!confirm('Hapus｜刪除這個任務？')) return;
+  _draft.tasks.splice(i,1); renderEditList();
+}
+function addPrinciple(){
+  _draft.principles.push({title_id:'', title_zh:'', text_id:'', text_zh:''});
+  renderEditList();
+}
+function delPrinciple(i){
+  if (!confirm('Hapus｜刪除這條原則？')) return;
+  _draft.principles.splice(i,1); renderEditList();
+}
+async function saveTemplate(){
+  // 依時段排序方便顯示
+  _draft.tasks.sort((a,b)=> (a.time_start||'').localeCompare(b.time_start||''));
+  try{
+    const r = await fetch('/api/care/tasks', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(_draft)
+    });
+    if (!r.ok) throw new Error(await r.text());
+    _template = JSON.parse(JSON.stringify(_draft));
+    renderPrinciples();
+    if (_view==='day') renderDay(); else renderWeek();
+    closeEdit();
+    showToast('✅ 已儲存');
+  }catch(e){
+    showToast('儲存失敗：' + e.message, true);
+  }
+}
+
+// ════════════════════════════════════════════
+//  啟動
+// ════════════════════════════════════════════
+(async function init(){
+  await loadTemplate();
+  renderPrinciples();
+  await setView('day');
+  // 每分鐘重新標「正在進行中」
+  setInterval(() => { if (_view==='day') renderDay(); }, 60000);
+})();
+</script>
+</body>
+</html>

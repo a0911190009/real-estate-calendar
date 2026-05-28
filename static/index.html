@@ -79,6 +79,14 @@ body {
   transition: background .15s;
 }
 #btn-add-event:hover { background: var(--ach); }
+/* 安娜日課表入口（粉色，與業務行程區分） */
+#btn-care {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 12px; border-radius: 8px;
+  border: 1px solid #fbcfe8; background: rgba(236,72,153,.15);
+  color: #ec4899; font-size: 0.82rem; transition: background .15s;
+}
+#btn-care:hover { background: rgba(236,72,153,.25); }
 #user-info { font-size: 0.82rem; color: var(--txs); }
 
 /* ── 導航列（月/週共用） ── */
@@ -1124,6 +1132,7 @@ window.addEventListener('unhandledrejection', function(e) {
   <h1>📅 業務行事曆</h1>
   <span id="user-info"></span>
   <button id="btn-portal" onclick="goPortal()">🏠 入口</button>
+  <a id="btn-care" href="/care" title="安娜日課表（外勞每日工作）" style="text-decoration:none;color:inherit;">👩 安娜日課表</a>
   <button id="btn-add-event" onclick="openModal()">＋ 新增行程</button>
 </div>
 
