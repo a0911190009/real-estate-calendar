@@ -250,7 +250,7 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--tx);
   <h1>👩 Jadwal Harian Anna <span class="sub">安娜日課表</span></h1>
   <div class="spacer"></div>
   <button class="btn ghost" onclick="openEdit()">⚙️ Edit | 編輯</button>
-  <a class="btn ghost" href="/">← Kalender Kerja｜回行事曆</a>
+  <a id="btn-back-cal" class="btn ghost" href="/" style="display:none;">← Kalender Kerja｜回行事曆</a>
 </div>
 
 <!-- 日期導覽 + 檢視切換 -->
@@ -762,6 +762,17 @@ async function saveTemplate(){
   await setView('day');
   // 每分鐘重新標「正在進行中」
   setInterval(() => { if (_view==='day') renderDay(); }, 60000);
+  // 「回行事曆」按鈕：只有使用者本人登入時顯示（安娜/其他人都看不到）
+  try{
+    const r = await fetch('/api/me');
+    if (r.ok){
+      const me = await r.json();
+      if ((me.email || '').toLowerCase() === 'a0911190009@gmail.com'){
+        const b = document.getElementById('btn-back-cal');
+        if (b) b.style.display = 'inline-flex';
+      }
+    }
+  }catch(e){ /* 沒登入就維持隱藏 */ }
 })();
 </script>
 </body>
